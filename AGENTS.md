@@ -45,8 +45,10 @@ english-tutor-claudinho is an Agent Plugins 1.0.0 plugin that corrects the Engli
 
 ## TypeScript
 
-- Node.js 22 or later. Sources live in `src/` and esbuild bundles them into `plugin/dist/tutor.mjs`.
-- Strict mode. No `any`, no `unknown`, no type assertions (`as`, angle brackets, non-null `!`). The ESLint config must enforce these rules.
+- Development uses Node.js 24 (`.nvmrc`), which runs the `.ts` scripts directly. The bundle targets Node.js 22 or later.
+- Sources live in `src/`, and esbuild bundles them into `plugin/dist/tutor.mjs`. Run `npm run build` after changing `src/` and commit the bundle.
+- Stay on TypeScript 6.0.x until typescript-eslint supports TypeScript 7. typescript-eslint 8.70 accepts TypeScript below 6.1.
+- Strict mode. No `any`, no `unknown`, no type assertions (`as`, including `as const`; angle brackets; non-null `!`). `eslint.config.js` enforces these rules and ignores inline `eslint-disable` comments, and `test/unit/eslint-bans.test.ts` guards the config.
 - Parse external JSON (hook payloads, MCP input, stored files) with zod schemas.
 
 ## Tests
