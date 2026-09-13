@@ -86,6 +86,40 @@ describe("validatePluginPackage", () => {
     expect(paths(await validatePluginPackage(root))).toContain("mcp.json");
   });
 
+  it("reports an MCP command that is not a single token", async () => {
+    const root = await makePackage({
+      "plugin.json": minimalManifest,
+      "mcp.json": JSON.stringify({
+        $schema: MCP_SCHEMA,
+        mcpServers: { tutor: { type: "stdio", command: "node dist/tutor.mjs" } },
+      }),
+    });
+    const messages = (await validatePluginPackage(root)).map((finding) => finding.message);
+    expect(messages.some((message) => message.includes("single executable token"))).toBe(true);
+  });
+
+  it("reports a skill whose frontmatter name does not match its directory", async () => {
+    const root = await makePackage({
+      "plugin.json": minimalManifest,
+      "skills/tutor/SKILL.md": "---\nname: english-tutor\ndescription: Tutor.\n---\n",
+    });
+    expect(await validatePluginPackage(root)).toContainEqual({
+      path: "skills/tutor/SKILL.md",
+      message: 'frontmatter name "english-tutor" does not match the directory "tutor" (Agent Skills §2)',
+    });
+  });
+
+  it("reports a skill missing SKILL.md and one missing its description", async () => {
+    const root = await makePackage({
+      "plugin.json": minimalManifest,
+      "skills/empty/other.md": "nothing",
+      "skills/thin/SKILL.md": "---\nname: thin\n---\n",
+    });
+    const messages = (await validatePluginPackage(root)).map((finding) => finding.message);
+    expect(messages).toContain("is missing SKILL.md (Agent Skills §2)");
+    expect(messages.some((message) => message.includes("missing `description`"))).toBe(true);
+  });
+
   it("reports invalid JSON", async () => {
     const root = await makePackage({ "plugin.json": "{ not json" });
     const [finding] = await validatePluginPackage(root);

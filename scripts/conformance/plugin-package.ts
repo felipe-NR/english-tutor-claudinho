@@ -22,6 +22,11 @@ type PackageFile =
 const PORTABLE_FILES = new Set(["plugin.json", "mcp.json", "LICENSE", "CHANGELOG.md", "README.md"]);
 const PORTABLE_DIRECTORIES = new Set(["skills", "dist", "assets"]);
 const NAMESPACE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/;
+const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const mcpServersConfig = z.object({
+  mcpServers: z.record(z.string(), z.looseObject({ type: z.string().optional(), command: z.string().optional() })).optional(),
+});
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const validateManifest = ajv.compile(pluginSchema);
@@ -45,11 +50,7 @@ export async function validatePluginPackage(root: string): Promise<Finding[]> {
   await checkLayout(realRoot, report);
   await checkManifest(realRoot, report);
   await checkMcpConfig(realRoot, report);
-
-  const skills = await stat(join(realRoot, "skills")).catch(() => undefined);
-  if (skills !== undefined && !skills.isDirectory()) {
-    report("skills", "must be a directory (spec §6.2)");
-  }
+  await checkSkills(realRoot, report);
 
   return findings.sort((a, b) => a.path.localeCompare(b.path) || a.message.localeCompare(b.message));
 }
@@ -93,9 +94,97 @@ async function checkMcpConfig(root: string, report: Report): Promise<void> {
   }
 
   const config = parseJson("mcp.json", file.text, report);
-  if (config !== undefined && !validateMcpConfig(config)) {
-    reportSchemaErrors("mcp.json", validateMcpConfig.errors, report);
+  if (config === undefined) {
+    return;
   }
+  if (!validateMcpConfig(config)) {
+    reportSchemaErrors("mcp.json", validateMcpConfig.errors, report);
+    return;
+  }
+
+  // The schema constrains env keys and the cwd shape, but leaves `command` a
+  // free string. The spec (§6.2) resolves it as one executable token, so an
+  // embedded argument or path separator would not run as written.
+  const parsed = mcpServersConfig.safeParse(config);
+  if (!parsed.success || parsed.data.mcpServers === undefined) {
+    return;
+  }
+  for (const [name, server] of Object.entries(parsed.data.mcpServers)) {
+    if (server.type === "stdio" && server.command !== undefined && /\s/.test(server.command)) {
+      report("mcp.json", `/mcpServers/${name}/command must be a single executable token, not "${server.command}" (spec §6.2)`);
+    }
+  }
+}
+
+// Agent Skills live under skills/<name>/SKILL.md with YAML frontmatter that
+// declares a kebab-case name matching the directory and a description.
+async function checkSkills(root: string, report: Report): Promise<void> {
+  const skillsDir = join(root, "skills");
+  const info = await stat(skillsDir).catch(() => undefined);
+  if (info === undefined) {
+    return;
+  }
+  if (!info.isDirectory()) {
+    report("skills", "must be a directory (spec §6.2)");
+    return;
+  }
+
+  for (const entry of await readdir(skillsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    await checkSkill(skillsDir, entry.name, report);
+  }
+}
+
+async function checkSkill(skillsDir: string, name: string, report: Report): Promise<void> {
+  const where = `skills/${name}`;
+  const skillFile = join(skillsDir, name, "SKILL.md");
+  const info = await stat(skillFile).catch(() => undefined);
+  if (info?.isFile() !== true) {
+    report(where, "is missing SKILL.md (Agent Skills §2)");
+    return;
+  }
+
+  const text = await readFile(skillFile, "utf8");
+  const meta = frontmatter(text);
+  if (meta === undefined) {
+    report(`${where}/SKILL.md`, "has no YAML frontmatter (Agent Skills §2)");
+    return;
+  }
+  if (meta.name === undefined || meta.name === "") {
+    report(`${where}/SKILL.md`, "frontmatter is missing `name` (Agent Skills §2)");
+  } else if (!SKILL_NAME.test(meta.name)) {
+    report(`${where}/SKILL.md`, `frontmatter name "${meta.name}" is not lowercase kebab-case (Agent Skills §2)`);
+  } else if (meta.name !== name) {
+    report(`${where}/SKILL.md`, `frontmatter name "${meta.name}" does not match the directory "${name}" (Agent Skills §2)`);
+  }
+  if (meta.description === undefined || meta.description === "") {
+    report(`${where}/SKILL.md`, "frontmatter is missing `description` (Agent Skills §2)");
+  }
+}
+
+interface SkillMeta {
+  readonly name: string | undefined;
+  readonly description: string | undefined;
+}
+
+function frontmatter(text: string): SkillMeta | undefined {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+  if (match === null) {
+    return undefined;
+  }
+  const block = match[1] ?? "";
+  return { name: scalar(block, "name"), description: scalar(block, "description") };
+}
+
+function scalar(block: string, key: string): string | undefined {
+  const line = new RegExp(`^${key}:[ \\t]*(.+)$`, "m").exec(block);
+  if (line === null) {
+    return undefined;
+  }
+  const value = (line[1] ?? "").trim();
+  return value.replace(/^["']/, "").replace(/["']$/, "").trim();
 }
 
 async function checkLayout(root: string, report: Report): Promise<void> {

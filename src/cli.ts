@@ -11,8 +11,16 @@ const USAGE = `tutor ${VERSION}
 Usage: tutor <command>
 
 Commands:
-  help      Show this message
-  version   Print the version
+  mcp                       Run the MCP server over stdio
+  hook <client> <event>     Trigger adapter for a client hook event
+  report [--period P]       Print the practice log (P: day, week, all)
+  config get [key]          Show preferences, or one preference
+  config set <key> <value>  Change a preference
+  purge --yes [--all|--from D --to D]
+                            Erase records (D: YYYY-MM-DD)
+  doctor                    Diagnose store, references and Node.js
+  help                      Show this message
+  version                   Print the version
 `;
 
 export function run(argv: readonly string[]): CliResult {
