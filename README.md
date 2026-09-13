@@ -4,7 +4,7 @@ An [Agent Plugins 1.0.0](https://agent-plugins.org/specification) plugin that tu
 
 ## Status
 
-Phase 0 (foundation) of the [implementation plan](docs/implementation-plan.md) (pt-BR). The plugin does not correct anything yet, and installation instructions arrive with the first release.
+Phases 0 (foundation) and 1 (client verification) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. The plugin does not correct anything yet, and installation instructions arrive with the first release.
 
 MVP clients: Claude Code and Codex.
 
@@ -29,7 +29,7 @@ npm run build   # rebuild plugin/dist/tutor.mjs after changing src/
 
 ## Em português
 
-O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. O projeto está na Fase 0 e ainda não corrige nada. O [plano de implementação](docs/implementation-plan.md) está em português.
+O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. As Fases 0 e 1 foram concluídas, e o projeto ainda não corrige nada. O [plano de implementação](docs/implementation-plan.md) está em português.
 
 ## License
 

@@ -1,0 +1,40 @@
+{
+  "recordedAt": "2026-09-13",
+  "client": {
+    "name": "codex-cli",
+    "version": "0.154.0",
+    "platform": "Linux"
+  },
+  "isolation": {
+    "profile": "temporary CODEX_HOME",
+    "modelProvider": "local Responses-compatible HTTP server",
+    "realModelCalled": false
+  },
+  "hooks": {
+    "canonical": {
+      "hookCount": 0,
+      "runsWithTrustBypass": false
+    },
+    "legacy": {
+      "hookCount": 1,
+      "trustStatus": "untrusted",
+      "runsWithoutTrustBypass": false,
+      "runsWithTrustBypass": true
+    },
+    "mixed": {
+      "hookCount": 0,
+      "runsWithTrustBypass": false
+    }
+  },
+  "mcpInstructions": {
+    "gpt-5.4": {
+      "inPromptInput": false,
+      "inToolMetadata": true,
+      "location": "tool_search description"
+    },
+    "gpt-6-astra": {
+      "inFirstRequest": false,
+      "inFirstRequestWithCodeModeDisabled": false
+    }
+  }
+}

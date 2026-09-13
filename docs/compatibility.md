@@ -1,16 +1,16 @@
 # Client compatibility
 
-Verified on 2026-09-13 with the Phase 1 spikes, on Linux 7.0 and Node.js 24.14.1. Every client ran in an isolated profile (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`). The probe package, the marketplace builder and the concurrency experiment live in [`spikes/`](../spikes/), and the recorded payloads live in [`test/contract/fixtures/`](../test/contract/fixtures/).
+Verified on 2026-09-13 with the Phase 1 spikes, on Linux 7.0 and Node.js 24.14.1. Codex was first tested on 0.153.4 and rechecked on 0.154.0. Every client ran in an isolated profile (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`). The 0.154.0 recheck used a local Responses-compatible HTTP server with fixed responses, so it called no real model and used no credentials. The probe package, marketplace builder, recorded Codex result and concurrency experiment live in [`spikes/`](../spikes/), and the recorded payloads live in [`test/contract/fixtures/`](../test/contract/fixtures/).
 
 ## Summary
 
-| Question | Claude Code 2.1.270 | Codex CLI 0.153.4 |
+| Question | Claude Code 2.1.270 | Codex CLI 0.153.4 and 0.154.0 |
 |-|-|-|
 | Installs the canonical Agent Plugins package | yes, from `.claude-plugin/marketplace.json` with `strict: false` | yes, from `.agents/plugins/marketplace.json` |
 | Root Agent Plugins `plugin.json` conflicts with the client format | no | no |
 | Skills from `skills/` | yes | yes, shown to the model as `plugin:skill` |
 | MCP server source | marketplace entry; `mcp.json` is ignored | `mcp.json`, with `${PLUGIN_ROOT}` expanded |
-| MCP `instructions` reach the model | yes | no |
+| MCP `instructions` reach the model | yes | `gpt-5.4`: yes, in `tool_search` metadata; `gpt-6-astra`: absent from the first recorded request |
 | Hooks from the canonical package | yes, declared inline in the marketplace entry | **no**: hooks are never loaded for Agent Plugins packages |
 | Hooks from a legacy `.codex-plugin/plugin.json` package | not applicable | yes, from `hooks/hooks.json` |
 | `SessionStart` and `UserPromptSubmit` stdout reaches the model | yes | yes, as developer messages |
@@ -33,18 +33,22 @@ Verified on 2026-09-13 with the Phase 1 spikes, on Linux 7.0 and Node.js 24.14.1
 
 - `codex plugin marketplace add <dir>` read `.agents/plugins/marketplace.json` and ignored `.claude-plugin/marketplace.json` in the same directory. `codex plugin add english-tutor-probe@english-tutor-spike` copied the package to `plugins/cache/<marketplace>/<plugin>/<version>/`.
 - Hooks declared for the Agent Plugins package never ran, with or without `--dangerously-bypass-hook-trust`. Five declarations failed the same way: `extensions.com.openai.hooks` as a path to `./com.openai/hooks/hooks.json`, as a path to `./hooks/hooks.json`, as an array of paths, as an inline object, and the default `hooks/hooks.json` with no extension field.
-- The Codex source explains it. [`loader.rs`](https://github.com/openai/codex/blob/dfaf451426868c22e6859f5494150fd6338c3257/codex-rs/core-plugins/src/loader.rs#L954-L963) returns no hook sources when the manifest format is `AgentPlugin`, and [`manifest.rs`](https://github.com/openai/codex/blob/dfaf451426868c22e6859f5494150fd6338c3257/codex-rs/core-plugins/src/manifest.rs#L168) marks every package with a root `plugin.json` as `AgentPlugin`. The [OpenAI plugin documentation](https://developers.openai.com/plugins) describes `extensions.com.openai.hooks` for Agent Plugins packages, so the documentation and the implementation disagree.
+- The Codex source explains it. [`loader.rs`](https://github.com/openai/codex/blob/6b9826e3aa83b1a5947db50f4332cb9c65f1b340/codex-rs/core-plugins/src/loader.rs#L954-L964) returns no hook sources when the manifest format is `AgentPlugin`. The relevant loader and Agent Plugins manifest blobs are identical in 0.153.4 and 0.154.0. The [OpenAI plugin documentation](https://developers.openai.com/plugins/build/plugins) describes `extensions.com.openai.hooks` for Agent Plugins packages, so the documentation and the implementation disagree.
 - A package with only `.codex-plugin/plugin.json` and `hooks/hooks.json` loaded its hooks. They received `PLUGIN_ROOT`, `PLUGIN_DATA`, `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PLUGIN_DATA`.
 - User hooks in `$CODEX_HOME/hooks.json` and legacy plugin hooks both ran only with `--dangerously-bypass-hook-trust`. Without the flag, `codex exec` skipped them and printed nothing.
 - The session transcript showed the stdout of `SessionStart` and `UserPromptSubmit` as developer messages. Two hook sources with the same output produced two developer messages, which confirms the need for per-turn deduplication.
 - `codex exec` waits for stdin to close when stdin is not a terminal ("Reading additional input from stdin..."). Automation has to redirect stdin from `/dev/null`.
+- The 0.154.0 recheck built three packages in a fresh profile. `hooks/list` returned `0` hooks for the canonical package, `1` untrusted hook for the legacy package and `0` hooks for the mixed root-manifest and legacy-overlay package. The legacy hook was absent from model context without a trust bypass and present with one. The canonical hook was absent with a bypass too. The sanitized summary is [`spikes/results/codex-0.154.0.json`](../spikes/results/codex-0.154.0.json).
 
 ## S3: MCP `instructions`
 
-| Client | `clientInfo` | Protocol version | `instructions` in the model context |
+| Client and model | `clientInfo` | Protocol version | `instructions` in the recorded first model request |
 |-|-|-|-|
 | Claude Code | `{"name":"claude-code","title":"Claude Code","version":"2.1.270"}` | `2025-11-25` | yes |
-| Codex | `{"name":"codex-mcp-client","title":"Codex","version":"0.153.4"}` | `2025-06-18` | no: absent from `codex debug prompt-input` and from the session transcript |
+| Codex `gpt-5.4` | `{"name":"codex-mcp-client","title":"Codex","version":"0.154.0"}` | `2025-06-18` | absent from `prompt.input`, present in the `tool_search` description as `audit-mcp: AUDIT_MCP_INSTRUCTIONS_PAPAYA` |
+| Codex `gpt-6-astra` | `{"name":"codex-mcp-client","title":"Codex","version":"0.154.0"}` | `2025-06-18` | absent from the full first request, including `input.additional_tools`; disabling `code_mode` did not change this |
+
+The 0.154.0 request summaries are identical to the 0.153.4 baseline. The MCP server received `initialize` and returned the marker for every run. `codex debug prompt-input` remains insufficient evidence for tool metadata because it returns only `prompt.input`.
 
 ## S4: Store
 
@@ -78,7 +82,9 @@ CLAUDE_CONFIG_DIR=/tmp/claude-profile claude plugin marketplace add /tmp/probe-m
 CLAUDE_CONFIG_DIR=/tmp/claude-profile claude plugin install english-tutor-probe@english-tutor-spike -y
 CODEX_HOME=/tmp/codex-profile codex plugin marketplace add /tmp/probe-marketplace
 CODEX_HOME=/tmp/codex-profile codex plugin add english-tutor-probe@english-tutor-spike
+CODEX_HOME=/tmp/codex-profile codex plugin add english-tutor-probe-legacy@english-tutor-spike
+CODEX_HOME=/tmp/codex-profile codex plugin add english-tutor-probe-mixed@english-tutor-spike
 node spikes/concurrent-append.ts
 ```
 
-The probe appends every event to `$TMPDIR/english-tutor-spike/events.jsonl` and tests writes to `~/.english-tutor-claudinho-spike`. Both profiles need a login before `claude -p` or `codex exec` runs.
+The builder creates canonical (`plugin/`), legacy (`legacy/`) and mixed (`mixed/`) packages. Capture and retain the complete `hooks/list` response for each package, one normal execution and one explicit trust-bypass execution, plus the full first request to a local fixed-response provider for every tested model/tool configuration. The expected 0.154.0 outcomes are in [`spikes/results/codex-0.154.0.json`](../spikes/results/codex-0.154.0.json). The probe appends every event to `$TMPDIR/english-tutor-spike/events.jsonl` and tests writes to `~/.english-tutor-claudinho-spike`. Both profiles need a login before authenticated Claude Code runs; the local Codex provider test does not.
