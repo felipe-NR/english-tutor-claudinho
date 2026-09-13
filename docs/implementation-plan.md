@@ -1,6 +1,6 @@
 # Plano de implementação: english-tutor-claudinho
 
-- Status: decisões D1 a D11 tomadas em 2026-09-13 (seção 8); Fase 0 concluída em 2026-09-13
+- Status: decisões D1 a D11 tomadas em 2026-09-13 (seção 8); Fases 0 e 1 concluídas em 2026-09-13; D12 tomada em 2026-09-13
 - Data: 2026-09-13
 - Base normativa: [Agent Plugins Specification 1.0.0](https://agent-plugins.org/specification), [Agent Skills](https://agentskills.io/specification), [Model Context Protocol](https://modelcontextprotocol.io/specification)
 
@@ -11,6 +11,7 @@
 - Conclusão: o produto vive no núcleo portátil (skill, servidor MCP e a CLI empacotada que ele executa). O gatilho por mensagem vive numa camada fina de adaptadores de hooks, um por cliente, sem nenhuma lógica pedagógica.
 - Onde o cliente não oferece hook capaz de injetar contexto por mensagem, o tutor opera em modo degradado: ativação por sessão e gravação via ferramenta MCP.
 - Em 2026-09-13 o Claude Code não implementa Agent Plugins. Ele consome o pacote canônico por um marketplace na raiz do repositório, que declara hooks e MCP inline e deixa o pacote intacto.
+- O Codex carrega skills e MCP do pacote canônico e ignora hooks de pacotes Agent Plugins (Fase 1). Para ter o gatilho por mensagem, ele instala um pacote legado gerado a partir do canônico, fora de `plugin/` (D12).
 - O MVP atende Claude Code e Codex (D1). Copilot CLI, VS Code e Antigravity CLI (agy) ficam para depois; no teste local, o agy aceitou `plugin.json` e `skills/` e ignorou `mcp.json` e hooks em namespace.
 - Várias linhas da matriz de clientes vêm só da documentação. A Fase 1 roda spikes para confirmar cada uma antes de escrever o núcleo.
 
@@ -100,7 +101,7 @@ A Agent Plugins 1.0.0 atua na camada de empacotamento: diz onde ficam skills e s
 
 ### 3.4 Situação dos clientes em 2026-09-13
 
-A tabela registra toda a pesquisa, inclusive clientes fora do MVP. Evidência: D = documentação oficial, T = teste local nesta máquina, I = issue pública.
+A tabela registra a pesquisa anterior aos spikes, inclusive clientes fora do MVP. Os resultados verificados de Claude Code e Codex estão em `docs/compatibility.md` e corrigem a linha do Codex: ele ignora hooks de pacotes Agent Plugins. Evidência: D = documentação oficial, T = teste local nesta máquina, I = issue pública.
 
 | Cliente (versão local) | Carrega Agent Plugins 1.0 | Gatilho por mensagem com injeção de contexto | Onde declarar hooks | Evidência |
 |-|-|-|-|-|
@@ -161,7 +162,7 @@ english-tutor-claudinho/
   README.md
   package.json, tsconfig.json, eslint.config.js
   .claude-plugin/marketplace.json    Claude Code: aponta para ./plugin com hooks e MCP inline
-  .agents/plugins/marketplace.json   Codex e ChatGPT: aponta para ./plugin (formato confirmado no S2)
+  .agents/plugins/marketplace.json   Codex e ChatGPT: aponta para ./adapters/codex (D12)
   .github/workflows/ci.yml           CI
   docs/
     implementation-plan.md           este documento
@@ -182,10 +183,10 @@ english-tutor-claudinho/
       references/l1-pt-br.md
       references/practice-log-format.md
     dist/tutor.mjs                   bundle gerado e versionado
-    com.openai/hooks/hooks.json
     LICENSE
     CHANGELOG.md
-  scripts/                           build e validador de conformidade
+  adapters/codex/                    pacote legado gerado a partir de plugin/ (D12), nunca editado à mão
+  scripts/                           build, geração do adapter e validador de conformidade
   vendor/agent-plugins/1.0.0/        schemas oficiais da spec (commit ff8ab5e)
   test/
     unit/
@@ -198,6 +199,7 @@ Regras do layout:
 - `plugin/` segue a spec à risca. Arquivo específico de cliente só entra em diretório de namespace ou em `extensions`.
 - Os marketplaces ficam fora do pacote. O guia de migração oficial classifica marketplace como metadata de distribuição, fora do formato portátil.
 - `plugin/dist/` é saída de build e nunca é editado à mão.
+- `adapters/codex/` repete skills, bundle e metadados de `plugin/` no formato legado do Codex (`.codex-plugin/plugin.json`, `.mcp.json`, `hooks/hooks.json`). O build gera o diretório e o CI confere que ele está atualizado.
 
 ### 4.2 Manifestos
 
@@ -213,12 +215,7 @@ Regras do layout:
   "homepage": "https://github.com/felipe-NR/english-tutor-claudinho",
   "repository": "https://github.com/felipe-NR/english-tutor-claudinho",
   "license": "MIT",
-  "keywords": ["english", "tutor", "language-learning", "pt-br", "skills", "mcp"],
-  "extensions": {
-    "com.openai": {
-      "hooks": "./com.openai/hooks/hooks.json"
-    }
-  }
+  "keywords": ["english", "tutor", "language-learning", "pt-br", "skills", "mcp"]
 }
 ```
 
@@ -265,7 +262,7 @@ Entrada do marketplace do Claude Code, esboço a validar no S1. Com `strict: fal
 }
 ```
 
-O arquivo `com.openai/hooks/hooks.json` segue o mesmo desenho com o esquema do Codex (`command` como string de shell, `commandWindows`, `timeout`). A sintaxe exata para `PLUGIN_ROOT` no Windows sai do S2.
+Os hooks do Codex ficam em `adapters/codex/hooks/hooks.json`, com o esquema do Codex (`command` como string de shell, `commandWindows`, `timeout`). O Codex ignora `extensions.com.openai.hooks` em pacotes Agent Plugins (Fase 1, S2), por isso o `plugin.json` canônico não declara hooks.
 
 ### 4.3 CLI única `tutor`
 
@@ -358,7 +355,7 @@ A lista completa, com mais exemplos por categoria, fica em `references/l1-pt-br.
 | Cliente | Início de sessão | Por mensagem | Fim de turno (captura) | Onde fica |
 |-|-|-|-|-|
 | Claude Code | `SessionStart`, ignorando `source` igual a `resume` | `UserPromptSubmit` | `Stop` com `last_assistant_message`, assíncrono | marketplace, inline |
-| Codex | `SessionStart` | `UserPromptSubmit` | `Stop` com `last_assistant_message`, assíncrono | `com.openai/hooks/hooks.json` |
+| Codex | `SessionStart` | `UserPromptSubmit` | `Stop` com `last_assistant_message`, assíncrono | `adapters/codex/hooks/hooks.json` (D12) |
 
 Depois do MVP, VS Code e Copilot CLI vão dividir `com.github.copilot/hooks/hooks.json`, e o adaptador distingue os dois pelo formato do payload. O agy vai usar `PreInvocation` e `Stop` num pacote gerado fora do pacote canônico. A seção 3.4 guarda o que a pesquisa encontrou sobre cada um.
 
@@ -424,20 +421,19 @@ As Fases 0 e 1 podem andar em paralelo. Se um spike contradisser uma decisão j�
 
 Critério de saída: `npm run check` passa no esqueleto. Verificado localmente; o CI roda no primeiro push.
 
-### Fase 1: Spikes de verificação
+### Fase 1: Spikes de verificação (concluída em 2026-09-13)
 
-Cada spike usa um plugin de sonda mínimo e perfis isolados (`CLAUDE_CONFIG_DIR` e `CODEX_HOME`). As pastas `~/.claude` e `~/.codex` já têm hooks do ai-memory e só mudam com sua autorização.
+Resultados completos em `docs/compatibility.md`, ferramentas em `spikes/` e payloads reais em `test/contract/fixtures/`. Os testes usaram perfis isolados com cópia temporária das credenciais, apagada no fim; `~/.claude` e `~/.codex` não mudaram.
 
-| Spike | Perguntas | Saída |
-|-|-|-|
-| S1 Claude Code | A entrada de marketplace com `strict: false` carrega `./plugin` com hooks e MCP inline? O `plugin.json` da raiz, no formato Agent Plugins, gera conflito? O contexto de `SessionStart` e `UserPromptSubmit` vindo de plugin chega ao modelo? `Stop` traz `last_assistant_message`? | fixtures de payload e linha na matriz |
-| S2 Codex | `extensions.com.openai.hooks` apontando para `./com.openai/hooks/hooks.json` funciona? Como é a revisão em `/hooks`? `PLUGIN_ROOT` e `PLUGIN_DATA` chegam aos hooks? `codex exec` dispara hooks? Qual o formato do marketplace de repositório? | fixtures e linha na matriz |
-| S3 `instructions` do MCP | O Claude Code e o Codex colocam `instructions` no prompt? Qual `clientInfo.name` cada um envia? | linha na matriz |
-| S4 Store | O diretório por usuário é gravável pelo servidor MCP e pelos hooks nos sandboxes do Claude Code e do Codex? Duas sessões simultâneas corrompem o JSONL? | confirmação do fallback da D4 |
+| Spike | Resultado |
+|-|-|
+| S1 Claude Code | O marketplace com `strict: false` instala o pacote canônico com hooks e MCP inline, sem conflito com o `plugin.json` da raiz. Contexto de `SessionStart`, `UserPromptSubmit` e `instructions` do MCP chega ao modelo, e o `Stop` traz `last_assistant_message`. Modo Completo. |
+| S2 Codex | Instala o pacote canônico pelo `.agents/plugins/marketplace.json`, carrega skills e o `mcp.json`, e **ignora hooks de pacotes Agent Plugins** em todas as cinco formas testadas. O código do Codex confirma: `loader.rs` não carrega hooks quando o manifesto é Agent Plugins, ao contrário da documentação da OpenAI. Pacotes legados (`.codex-plugin/plugin.json`) carregam hooks, que exigem confiança. Com o pacote canônico, modo Padrão. |
+| S3 `instructions` do MCP | Chegam ao modelo no Claude Code (`clientInfo.name` = `claude-code`) e não chegam no Codex (`codex-mcp-client`). |
+| S4 Store | Hooks e servidores MCP dos dois clientes gravam na home e no diretório de dados do plugin, inclusive com sandbox. 16 mil linhas gravadas por 8 processos simultâneos ficaram íntegras em tmpfs e ext4; Windows não foi testado, e o lock planejado fica. |
 
-Os spikes de Copilot CLI e VS Code (S5) e do agy (S6) passam para a Fase 6.
+Decisão resultante: D12, pacote legado gerado para o Codex (seção 8).
 
-Critério de saída: `docs/compatibility.md` classifica Claude Code e Codex como Completo, Padrão ou Mínimo, com versão testada e data.
 
 ### Fase 2: Núcleo portátil
 
@@ -452,7 +448,7 @@ Critério de saída: o pacote passa no validador, e o modo Padrão funciona de p
 ### Fase 3: Adaptadores de gatilho
 
 - `src/hooks/claude-code` e `src/hooks/codex`.
-- Hooks do Codex em `com.openai/hooks/hooks.json` e hooks do Claude Code inline no marketplace.
+- Hooks do Claude Code inline no marketplace e geração de `adapters/codex/` com os hooks do Codex.
 - Captura no fim do turno, deduplicação de lembrete, kill switch e `disabled_projects`.
 - Testes de contrato com as fixtures da Fase 1.
 
@@ -460,7 +456,8 @@ Critério de saída: modo Completo funcionando no Claude Code e no Codex (ou Pad
 
 ### Fase 4: Empacotamento e distribuição
 
-- Marketplaces do Claude Code e do Codex.
+- Marketplaces do Claude Code (aponta para `plugin/`) e do Codex (aponta para `adapters/codex/`).
+- Checagem no CI de que `adapters/codex/` corresponde a `plugin/`.
 - README em inglês com instalação por cliente em até dois comandos.
 - Versionamento semântico, CHANGELOG e tags.
 - CI verificando que arquivos gerados estão atualizados.
@@ -505,6 +502,7 @@ Critério de saída: metas atingidas ou desvios documentados.
 |-|-|-|
 | Claude Code sem suporte a Agent Plugins | o cliente principal depende de um marketplace específico | pacote canônico intacto, acompanhamento do CHANGELOG, remoção do caminho específico quando o suporte chegar |
 | Contratos de hooks mudam entre versões (Claude Code e Codex lançam versões com frequência; fora do MVP, o agy mudou o contrato na 1.2.x segundo claude-mem#4057) | hooks param de funcionar sem aviso | testes de contrato com fixtures versionadas, `tutor doctor`, saída vazia para payload desconhecido |
+| O Codex continua ignorando hooks de pacotes Agent Plugins, contra a própria documentação | o Codex depende de um pacote legado gerado | `adapters/codex/` gerado e verificado no CI; repetir o S2 a cada release do Codex e remover o adapter quando os hooks carregarem |
 | Um cliente futuro descarta o contexto injetado, como o Copilot CLI | sem gatilho por mensagem nesse cliente | modo Padrão documentado |
 | Correção vaza para código, commits ou arquivos | dano ao trabalho do usuário | regra explícita no protocolo e casos negativos na avaliação |
 | Excesso de correções | usuário desliga o tutor | teto de 3 linhas, silêncio quando não há erro, rigor configurável, pausa |
@@ -531,6 +529,7 @@ Critério de saída: metas atingidas ou desvios documentados.
 | D9 | Nome do plugin | decidida | `english-tutor-claudinho`, igual ao repositório |
 | D10 | Licença | decidida | MIT |
 | D11 | Idioma da documentação do repositório | decidida | inglês, com uma seção curta em pt-BR; este plano continua em pt-BR |
+| D12 | Hooks no Codex | decidida | pacote legado gerado em `adapters/codex/`, fora de `plugin/`, porque o Codex ignora hooks de pacotes Agent Plugins (Fase 1, S2); sai quando o Codex carregar esses hooks |
 
 ## Apêndice A: AGENTS.md
 
