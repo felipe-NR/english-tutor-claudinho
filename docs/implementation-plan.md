@@ -1,6 +1,6 @@
 # Plano de implementação: english-tutor-claudinho
 
-- Status: decisões D1 a D11 tomadas em 2026-09-13 (seção 8)
+- Status: decisões D1 a D11 tomadas em 2026-09-13 (seção 8); Fase 0 concluída em 2026-09-13
 - Data: 2026-09-13
 - Base normativa: [Agent Plugins Specification 1.0.0](https://agent-plugins.org/specification), [Agent Skills](https://agentskills.io/specification), [Model Context Protocol](https://modelcontextprotocol.io/specification)
 
@@ -162,6 +162,7 @@ english-tutor-claudinho/
   package.json, tsconfig.json, eslint.config.js
   .claude-plugin/marketplace.json    Claude Code: aponta para ./plugin com hooks e MCP inline
   .agents/plugins/marketplace.json   Codex e ChatGPT: aponta para ./plugin (formato confirmado no S2)
+  .github/workflows/ci.yml           CI
   docs/
     implementation-plan.md           este documento
     adr/0001-camadas-do-tutor.md
@@ -185,6 +186,7 @@ english-tutor-claudinho/
     LICENSE
     CHANGELOG.md
   scripts/                           build e validador de conformidade
+  vendor/agent-plugins/1.0.0/        schemas oficiais da spec (commit ff8ab5e)
   test/
     unit/
     contract/fixtures/<cliente>/<evento>.json
@@ -408,15 +410,19 @@ Metas medidas e ajustadas na Fase 5:
 
 As Fases 0 e 1 podem andar em paralelo. Se um spike contradisser uma decisão já tomada, ela volta para você antes de a fase seguir.
 
-### Fase 0: Fundação
+### Fase 0: Fundação (concluída em 2026-09-13, branch `phase-0-foundation`)
 
-- ADR-0001 com a análise da seção 3.
-- `AGENTS.md` com as regras do projeto (feito em 2026-09-13).
-- Toolchain: TypeScript strict; ESLint proibindo `any`, `unknown`, asserções de tipo e `!`; Vitest; esbuild gerando `plugin/dist/tutor.mjs`; Node 22 ou superior.
-- CI no GitHub Actions com lint, typecheck, testes, validação de conformidade e checagem de bundle atualizado.
-- Arquivo de licença MIT.
+- ADR-0001 em `docs/adr/0001-tutor-layers.md`.
+- `AGENTS.md` com as regras do projeto.
+- Toolchain: TypeScript 6.0.3 em modo strict, ESLint 10 com typescript-eslint 8.70, Vitest 5 e esbuild gerando `plugin/dist/tutor.mjs` para Node 22. O TypeScript 7 fica para depois, porque o typescript-eslint 8.70 só aceita TypeScript abaixo de 6.1. O desenvolvimento usa Node 24, que executa os scripts `.ts` direto.
+- ESLint proibindo `any`, `unknown`, `as` (inclusive `as const`), asserção com colchetes angulares, `!` e comentários `eslint-disable`, com um teste que confirma cada proibição.
+- CLI `tutor` com `help` e `version`, e o bundle versionado.
+- Pacote mínimo: `plugin/plugin.json`, `plugin/LICENSE` e `plugin/CHANGELOG.md`.
+- Validador de conformidade (`npm run validate:plugin`) com os schemas oficiais vendorizados: schema do manifesto e do `mcp.json`, chaves de `extensions` em reverse-domain, layout estrito da D3, contenção de caminhos, cópia da licença e mesma versão em `package.json`, `plugin/plugin.json` e `src/version.ts`.
+- CI no GitHub Actions: `npm run check` no Node 24 e execução do bundle no Node 22 e 24, em Linux e Windows.
+- Licença MIT.
 
-Critério de saída: `npm run check` passa no esqueleto.
+Critério de saída: `npm run check` passa no esqueleto. Verificado localmente; o CI roda no primeiro push.
 
 ### Fase 1: Spikes de verificação
 
@@ -438,7 +444,7 @@ Critério de saída: `docs/compatibility.md` classifica Claude Code e Codex como
 - Skill `english-tutor` com as references de protocolo, perfil pt-BR e formato do log.
 - `src/core`: store, deduplicação, estatísticas, briefing, preferências e purge.
 - `src/mcp`: tools, prompts, resources e `instructions`.
-- `plugin.json`, `mcp.json` e validador de conformidade.
+- `mcp.json` e regras novas no validador: Agent Skills e a parte do MCP que o schema não cobre (`command` como token único, formas de `cwd`, variáveis reservadas em `env`).
 - Testes unitários e testes de MCP com o client do SDK contra o bundle.
 
 Critério de saída: o pacote passa no validador, e o modo Padrão funciona de ponta a ponta no Codex, sem hooks.
