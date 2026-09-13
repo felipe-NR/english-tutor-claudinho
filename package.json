@@ -1,0 +1,38 @@
+{
+  "name": "english-tutor-claudinho",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Agent Plugins 1.0.0 plugin that corrects the English in your messages to coding agents. Tuned for Brazilian Portuguese speakers.",
+  "license": "MIT",
+  "author": "Felipe Neves Ricardo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felipe-NR/english-tutor-claudinho.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "validate:plugin": "node scripts/validate-plugin.ts",
+    "check:bundle": "node scripts/check-bundle.ts",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run validate:plugin && npm run check:bundle"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.2",
+    "ajv": "8.20.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.10.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.0"
+  },
+  "dependencies": {
+    "zod": "4.6.4"
+  }
+}
