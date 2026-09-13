@@ -1,3 +1,64 @@
+# AGENTS.md
+
+## Project
+
+english-tutor-claudinho is an Agent Plugins 1.0.0 plugin that corrects the English in the user's messages inside coding agents and tracks recurring mistakes. It is tuned for Brazilian Portuguese speakers.
+
+`docs/implementation-plan.md` holds the architecture, the phases and the settled decisions (section 8). It is written in pt-BR for the owner's review. Changing a settled decision needs the repository owner's approval.
+
+## Scope
+
+- MVP clients: Claude Code and Codex. Copilot CLI, VS Code, Antigravity CLI, Cursor and Kiro come after the MVP, each after its own spike.
+- Native-language profile: Brazilian Portuguese (pt-BR).
+
+## Sources of truth
+
+- `plugin/` is the canonical Agent Plugins 1.0.0 package and stays 100% conformant to the spec. It must pass `npm run validate:plugin`.
+- Distribution files for a specific client, such as the Claude Code marketplace in `.claude-plugin/marketplace.json`, live outside `plugin/`.
+- `plugin/dist/` is build output committed to the repository, because installs from git run no build step. Never edit it by hand. CI checks that it matches the sources.
+- Check claims about client behavior against primary documentation or a recorded spike, and record the result in `docs/compatibility.md`.
+
+## Layer boundaries
+
+- Pedagogy (correction protocol, L1 profiles), storage and reports live in the portable core: skills and the MCP server.
+- Hooks are trigger adapters. They hold no pedagogy and call `dist/tutor.mjs hook <client> <event>`.
+- Inside `plugin/`, client-specific files live only in their reverse-domain namespace directory, and client-specific manifest data lives only under `extensions`.
+- Never add top-level fields to `plugin.json` beyond the ones the spec defines.
+
+## Tutor behavior
+
+- Explanations are in English. False friends get a short pt-BR note.
+- Messages written in Portuguese get no comment by default. The optional `hint` mode adds a one-line English version to short messages.
+- Corrections never go into files, code, commit messages or PR descriptions.
+
+## Storage and privacy
+
+- One store per OS user, resolved through the OS user API instead of environment variables. `PLUGIN_DATA` is the fallback when that store is not writable.
+- Store only the incorrect fragment and its correction. Never store whole prompts, code blocks or secrets.
+- No network access and no telemetry.
+
+## Hook safety
+
+- A hook never breaks a session. On any internal error it exits 0 with the client's empty output and logs locally.
+- Hooks never block prompts or tool calls.
+- Synchronous hooks stay under 300 ms at p95.
+
+## TypeScript
+
+- Node.js 22 or later. Sources live in `src/` and esbuild bundles them into `plugin/dist/tutor.mjs`.
+- Strict mode. No `any`, no `unknown`, no type assertions (`as`, angle brackets, non-null `!`). The ESLint config must enforce these rules.
+- Parse external JSON (hook payloads, MCP input, stored files) with zod schemas.
+
+## Tests
+
+- Every client adapter has contract tests backed by recorded payload fixtures.
+- `npm run check` (lint, typecheck, tests, conformance, bundle freshness) passes before every commit.
+
+## Documentation and license
+
+- Repository documentation is in English. The README has a short pt-BR section.
+- License: MIT.
+
 <!-- ai-memory:start -->
 ## Long-term memory (ai-memory)
 
