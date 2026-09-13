@@ -1,6 +1,6 @@
 # Plano de implementação: english-tutor-claudinho
 
-- Status: decisões D1 a D11 tomadas em 2026-09-13 (seção 8); Fases 0 e 1 concluídas em 2026-09-13; D12 tomada em 2026-09-13
+- Status: decisões D1 a D11 tomadas em 2026-09-13 (seção 8); Fases 0, 1 e 2 concluídas em 2026-09-13; D12 tomada em 2026-09-13
 - Data: 2026-09-13
 - Base normativa: [Agent Plugins Specification 1.0.0](https://agent-plugins.org/specification), [Agent Skills](https://agentskills.io/specification), [Model Context Protocol](https://modelcontextprotocol.io/specification)
 
@@ -438,15 +438,16 @@ Resultados completos em `docs/compatibility.md`, ferramentas em `spikes/`, resum
 Decisão resultante: D12, pacote legado gerado para o Codex (seção 8).
 
 
-### Fase 2: Núcleo portátil
+### Fase 2: Núcleo portátil (concluída em 2026-09-13)
 
 - Skill `english-tutor` com as references de protocolo, perfil pt-BR e formato do log.
-- `src/core`: store, deduplicação, estatísticas, briefing, preferências e purge.
-- `src/mcp`: tools, prompts, resources e `instructions`.
-- `mcp.json` e regras novas no validador: Agent Skills e a parte do MCP que o schema não cobre (`command` como token único, formas de `cwd`, variáveis reservadas em `env`).
-- Testes unitários e testes de MCP com o client do SDK contra o bundle.
+- `src/core`: store append-only com lock de arquivo e deduplicação por `occurrence_id`, estatísticas, briefing, relatório, preferências e purge. Store resolvido pela API do sistema (`os.userInfo().homedir`), com fallback para `PLUGIN_DATA` e override `ENGLISH_TUTOR_DATA` para testes e sandboxes.
+- `src/mcp`: as cinco tools, os três prompts, os três resources e `instructions`. Os resources de protocolo e perfil leem as references da skill em tempo de execução, mantendo a skill como fonte única.
+- CLI: `tutor mcp`, `report`, `config get/set`, `purge` e `doctor`. `tutor hook` fica como no-op seguro (exit 0) até a Fase 3.
+- `plugin/mcp.json` e regras novas no validador: estrutura das Agent Skills (SKILL.md com frontmatter `name`/`description` em kebab-case, `name` igual ao diretório) e `command` do MCP como token único, além das checagens de `env` e `cwd` que o schema já cobre.
+- Testes unitários do núcleo e teste de MCP com o client do SDK contra `dist/tutor.mjs` via stdio.
 
-Critério de saída: o pacote passa no validador, e o modo Padrão funciona de ponta a ponta no Codex, sem hooks.
+Critério de saída: o pacote passa no validador (`npm run validate:plugin`), e o modo Padrão funciona de ponta a ponta contra o bundle pelo transporte stdio que o `mcp.json` inicia, o mesmo caminho que o Codex usa. `npm run check` passa. Falta a confirmação em execução real dentro do Codex, que entra no perfil limpo da Fase 4.
 
 ### Fase 3: Adaptadores de gatilho
 
