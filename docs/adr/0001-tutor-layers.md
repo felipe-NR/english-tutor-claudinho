@@ -27,7 +27,7 @@ Client support observed on 2026-09-13:
 Split the tutor into two layers.
 
 1. **Portable core** in the Agent Plugins package `plugin/`: the `english-tutor` skill, the `english-tutor` MCP server and the bundled `tutor` CLI that the server runs. The correction protocol, the pt-BR profile, storage, briefing, reports and review live here.
-2. **Trigger adapters**, one per client. Each one is declared in that client's namespace (`com.openai/hooks/hooks.json` for Codex) or in distribution metadata outside the package (the Claude Code marketplace entry). An adapter calls `tutor hook <client> <event>` and only translates that client's input and output formats.
+2. **Trigger adapters**, one per client. Each one is declared in distribution metadata outside the package (the Claude Code marketplace entry) or in a generated compatibility package outside `plugin/` (`adapters/codex/` for Codex, see the update below). An adapter calls `tutor hook <client> <event>` and only translates that client's input and output formats.
 
 Clients without per-message injection run in Standard mode: the user turns tutor mode on for the session, and the model records mistakes through an MCP tool. Skills-only clients run in Minimal mode, with on-demand corrections and no history.
 
@@ -38,10 +38,18 @@ Clients without per-message injection run in Standard mode: the user turns tutor
 - Any Agent Plugins client loads the core without client-specific code.
 - Supporting a new client takes one adapter and one spike, with no change to the core.
 - Claude Code, the main client, depends on a marketplace entry with `strict: false` until it implements Agent Plugins.
+- Codex depends on the generated legacy package until it loads hooks from Agent Plugins packages.
 - Hook contracts change between client versions, so each adapter needs contract tests with recorded payloads.
 - Per-message reinforcement exists only in clients that offer it.
+
+## Update 2026-09-13: Codex hooks
+
+The Phase 1 spikes ([docs/compatibility.md](../compatibility.md)) showed that Codex 0.153.4 never loads hooks from a package with a root `plugin.json`, whatever `extensions.com.openai.hooks` declares. The Codex loader returns no hook sources for the Agent Plugins manifest format, although the OpenAI documentation describes that field. Codex does load hooks from legacy `.codex-plugin/plugin.json` packages.
+
+Decision D12: the build generates `adapters/codex/`, a legacy Codex package with the same skills, bundle and metadata as `plugin/` plus `hooks/hooks.json`, and the Codex marketplace points to it. `plugin/` stays fully conformant. The adapter goes away when Codex loads hooks from Agent Plugins packages.
 
 ## Revisit when
 
 - Agent Plugins publishes a release after 1.0.0, especially one that adds hooks.
 - Claude Code implements Agent Plugins.
+- A Codex release loads hooks from Agent Plugins packages.
