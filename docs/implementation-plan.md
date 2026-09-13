@@ -31,7 +31,7 @@ Definição de "plug and play" usada neste plano:
 
 1. Instala com o comando nativo de plugins do cliente ou pelo marketplace dele, sem editar arquivo de configuração à mão.
 2. Não exige build na máquina do usuário. O único pré-requisito é Node.js 22 ou superior no PATH.
-3. Desinstalar remove todo o comportamento. O histórico de aprendizado fica até o usuário apagar.
+3. Desinstalar remove todo o comportamento. O histórico no store principal fica até o usuário apagar. Se a CLI precisou usar `${PLUGIN_DATA}` como fallback, o cliente pode apagar esse diretório na desinstalação.
 4. Consentimentos exigidos pelo cliente, como a revisão de confiança de hooks no Codex, ficam documentados e fora do nosso controle.
 
 Fora do MVP: interface gráfica, sincronização em nuvem, telemetria, clientes além de Claude Code e Codex e perfis de idioma nativo além do pt-BR.
@@ -95,7 +95,7 @@ A Agent Plugins 1.0.0 atua na camada de empacotamento: diz onde ficam skills e s
 | Arquivos de instrução (`AGENTS.md`, `CLAUDE.md`) | não, regras estão fora da v1 | parcial | sim | não | não | configuração do usuário, fora do pacote; a atenção a instruções do início do contexto cai em sessões longas |
 | Agent Skill | sim, em `skills/` | parcial | sim | não | parcial | ativação decidida pelo modelo ou pelo usuário; serve para ligar o modo tutor por sessão |
 | Servidor MCP: tools, prompts e resources | sim, em `mcp.json` | não | sim | sim | sim | estado em `${PLUGIN_DATA}`; prompts MCP aparecem como comandos em vários clientes |
-| Servidor MCP: campo `instructions` do `initialize` | sim | parcial | sim | não | não | entra no system prompt dos clientes que o respeitam (Claude Code e VS Code, segundo as fontes); os outros precisam de teste |
+| Servidor MCP: campo `instructions` do `initialize` | sim | parcial | sim | não | não | entra em metadados visíveis ao modelo quando o cliente o expõe; a posição e a disponibilidade dependem do modelo e da configuração do cliente |
 | Hooks de ciclo de vida | não, só como extensão de cliente | sim | não, por decisão de projeto | sim | sim | único mecanismo determinístico por mensagem; formatos divergem entre clientes |
 | Comandos, agentes, output styles | não | não | parcial | não | parcial | dispensáveis, porque prompts MCP e skills cobrem os comandos |
 
@@ -106,7 +106,7 @@ A tabela registra a pesquisa anterior aos spikes, inclusive clientes fora do MVP
 | Cliente (versão local) | Carrega Agent Plugins 1.0 | Gatilho por mensagem com injeção de contexto | Onde declarar hooks | Evidência |
 |-|-|-|-|-|
 | Claude Code 2.1.270 | não: ausente da lista oficial de clientes compatíveis, da referência de plugins e do CHANGELOG | sim: stdout de `UserPromptSubmit` e de `SessionStart` com exit 0 vira contexto; `Stop` recebe `last_assistant_message` | entrada de marketplace com `strict: false` e `hooks`/`mcpServers` inline | D |
-| Codex CLI 0.153.4 e ChatGPT | sim | sim: texto em stdout de `UserPromptSubmit` vira developer context; `Stop` recebe `last_assistant_message`; hooks de plugin só rodam depois da revisão em `/hooks` | `extensions.com.openai.hooks`, com caminho `./` ou objeto inline | D |
+| Codex CLI 0.154.0 e ChatGPT | sim | sim: texto em stdout de `UserPromptSubmit` vira developer context; `Stop` recebe `last_assistant_message`; hooks do pacote legado só rodam depois da revisão em `/hooks` | pacote legado `.codex-plugin/plugin.json`; o runtime ignora hooks do pacote canônico | D, T |
 | GitHub Copilot CLI 1.0.78 | sim | não: a documentação diz que a saída de hooks de arquivo em `userPromptSubmitted` é descartada; `sessionStart` documenta `additionalContext`, e a issue copilot-cli#2142 relata que ele é ignorado | `com.github.copilot/hooks/hooks.json` | D, I |
 | VS Code 1.137 (Copilot Chat) | sim | a confirmar: `UserPromptSubmit` existe, `additionalContext` aparece documentado para `SessionStart`, hooks em Preview | `com.github.copilot/hooks/hooks.json` | D |
 | Antigravity CLI (agy) 1.1.27 | parcial: `agy plugin validate` aceitou `plugin.json` e `skills/` e não detectou `mcp.json` nem hooks em namespace | sim: `PreInvocation` responde `{"injectSteps":[{"ephemeralMessage":"..."}]}`; o payload traz `invocationNum`, `conversationId` e `transcriptPath`, sem o texto do prompt | `hooks.json` na raiz do plugin, MCP em `mcp_config.json` | D, T, I |
@@ -118,7 +118,7 @@ Teste local (T): um plugin de sonda com `plugin.json` da Agent Plugins, `skills/
 
 A solução entra em duas camadas com responsabilidades separadas.
 
-1. **Núcleo portátil, dentro da Agent Plugins 1.0.0.** Skill `english-tutor`, servidor MCP `english-tutor` e a CLI empacotada que ele executa. Aqui ficam o protocolo de correção, o perfil pt-BR, o armazenamento, o briefing, os relatórios e a revisão. Qualquer cliente compatível recebe esse núcleo sem código específico.
+1. **Núcleo portátil, dentro da Agent Plugins 1.0.0.** Skill `english-tutor`, servidor MCP `english-tutor` e a CLI empacotada que ele executa. Aqui ficam o protocolo de correção, o perfil pt-BR, o armazenamento, o briefing, os relatórios e a revisão. Clientes que carregam as componentes necessárias, inclusive o transporte MCP usado pelo plugin, recebem o núcleo sem código específico.
 2. **Adaptadores de gatilho, como extensões de cliente.** Uma declaração de hooks por cliente, no namespace desse cliente ou na metadata de distribuição. Cada hook chama `node dist/tutor.mjs hook <cliente> <evento>` e só traduz o protocolo de entrada e saída daquele cliente. Texto pedagógico nunca mora nos hooks.
 
 Modos de operação, escolhidos pelo que cada cliente oferece:
@@ -150,6 +150,7 @@ sequenceDiagram
   M-->>U: até 3 linhas de correção + resposta normal
   C->>H: fim do turno com o texto da resposta
   H->>D: grava correções com deduplicação
+```
 
 ## 4. Arquitetura proposta
 
@@ -290,7 +291,7 @@ Regras do modo hook:
 O texto completo fica em `references/correction-protocol.md` e é injetado uma vez por sessão, e de novo depois de uma compactação de contexto. A cada mensagem vai só um lembrete curto, porque o contexto injetado por hook fica no histórico: 50 mensagens com 120 tokens cada somariam 6 mil tokens.
 
 1. Avaliar só a prosa que o usuário escreveu na última mensagem. Ignorar blocos de código, comandos, logs, stack traces, citações, URLs, texto colado, comandos de barra e conteúdo injetado por ferramentas ou hooks.
-2. Havendo erros, abrir a resposta com até 3 linhas no formato `✏️ "original" → "correção" (motivo curto)`. O marcador fixo no início da linha permite a captura determinística.
+2. Havendo erros, abrir a resposta final visível ao usuário com até 3 linhas no formato `✏️ [categoria] "original" → "correção" (motivo curto)`. Se o turno usar ferramentas, a correção fica na resposta final, não em mensagem intermediária. O marcador e o ID de categoria permitem a captura determinística.
 3. Sem erros, não escrever nada sobre inglês.
 4. Nunca levar correções para arquivos, código, mensagens de commit ou descrições de PR.
 5. Uma linha por padrão de erro, agrupando repetições.
@@ -306,8 +307,8 @@ Lembrete por mensagem, em inglês porque o destinatário é o modelo:
 Saída esperada:
 
 ```text
-✏️ "I have a doubt about this endpoint" → "I have a question about this endpoint" (for "dúvida", use question)
-✏️ "it depends of the config" → "it depends on the config" (depend takes "on")
+✏️ [doubt-question] "I have a doubt about this endpoint" → "I have a question about this endpoint" (for "dúvida", use question)
+✏️ [preposition] "it depends of the config" → "it depends on the config" (depend takes "on")
 ```
 
 ### 4.5 Perfil L1 pt-BR
@@ -340,7 +341,7 @@ A lista completa, com mais exemplos por categoria, fica em `references/l1-pt-br.
 
 | Tool | Entrada | Efeito |
 |-|-|-|
-| `record_corrections` | lista de `{original, correction, category, reason}` | grava com deduplicação e recusa fragmentos acima de 160 caracteres |
+| `record_corrections` | lista de `{original, correction, category, reason}`, com `occurrence_id` quando o hook o forneceu | grava a ocorrência e recusa fragmentos acima de 160 caracteres |
 | `get_briefing` | limite de itens | fraquezas principais, tendência dos últimos 7 dias, foco sugerido |
 | `get_report` | período | Markdown com Pattern Tracking e Daily Log |
 | `set_preferences` | rigor, idioma da explicação, mensagens em português, pausa, projetos desativados | atualiza as preferências |
@@ -348,7 +349,7 @@ A lista completa, com mais exemplos por categoria, fica em `references/l1-pt-br.
 
 - Prompts MCP, que aparecem como comandos nos clientes que expõem prompts: `english-tutor-on`, `english-review`, `english-report`.
 - Resources: `english-tutor://protocol`, `english-tutor://profile/pt-BR`, `english-tutor://report`.
-- `instructions`: texto curto. Em clientes no modo Completo, descreve só as ferramentas, para não duplicar o protocolo injetado pelo hook. Nos demais, inclui a regra de ativação por sessão. A escolha usa o `clientInfo.name` recebido no `initialize`, e o S3 confirma se Claude Code e Codex colocam `instructions` no prompt.
+- `instructions`: texto curto, limitado à superfície das ferramentas. Não escolhe modo a partir de `clientInfo.name`, pois o nome do cliente não revela se o hook está presente, confiável ou habilitado. O hook injeta o protocolo quando estiver ativo. Sem hook, a skill e os prompts MCP fornecem a ativação por sessão. S3 registra onde cada modelo/configuração expõe esse texto, sem prometer que ele entre no system prompt.
 
 ### 4.7 Hooks por cliente
 
@@ -361,20 +362,22 @@ Depois do MVP, VS Code e Copilot CLI vão dividir `com.github.copilot/hooks/hook
 
 ### 4.8 Captura das correções
 
-1. Onde o fim de turno expõe o texto da resposta, o hook extrai as linhas com o marcador e grava. Não gasta tokens do modelo.
+1. Onde o fim de turno expõe o texto da resposta, o hook extrai as linhas com o marcador da resposta final. Não gasta tokens do modelo. O protocolo mantém as correções nessa resposta mesmo depois de uma chamada de ferramenta.
 2. Onde isso não existe, o protocolo pede ao modelo que chame `record_corrections`.
-3. As duas vias gravam no mesmo store. A chave de deduplicação é o hash de `original` e `correction` normalizados numa janela de 10 minutos, então um erro capturado pelas duas vias conta uma vez.
+3. Cada lembrete de hook inclui um `occurrence_id` opaco, derivado de cliente, sessão, turno e mensagem. O modelo o devolve na chamada MCP; a captura do `Stop` usa o mesmo identificador. Registros da mesma ocorrência e do mesmo fragmento são unidos. Repetições em outro turno ou sessão continuam como novas ocorrências.
+4. Sem hook, `record_corrections` cria uma ocorrência nova. A ausência de `occurrence_id` nunca suprime uma correção futura só porque `original` e `correction` coincidem.
+5. Captura assíncrona é melhor esforço. Se o cliente encerrar antes da conclusão, a última ocorrência pode não ser gravada. O relatório e a promessa de histórico não incluem garantia de gravação nesse caso.
 
 ### 4.9 Armazenamento e privacidade
 
-- Fonte da verdade: `corrections.jsonl`, só com acréscimos, um evento por correção (`id`, `ts`, `client`, `category`, `original`, `correction`, `reason`, `source`).
+- Fonte da verdade: `corrections.jsonl`, só com acréscimos, um evento por correção (`id`, `occurrence_id`, `mistake_key`, `ts`, `client`, `category`, `original`, `correction`, `reason`, `source`). `mistake_key` agrupa estatísticas; `occurrence_id` preserva cada repetição legítima.
 - Derivados reconstruíveis: `stats.json` e `english-practice-log.md`, este no formato da Luna.
 - Preferências em `config.json`. Marcadores de deduplicação com TTL em `state/`.
 - Escrita concorrente de duas sessões em clientes diferentes usa lock de arquivo com retry.
 - Grava só o trecho com erro (até 160 caracteres) e a correção. Prompt inteiro, blocos de código e valores com formato de segredo nunca são gravados.
 - Sem rede e sem telemetria.
 
-Local do store (D4, decidida): um diretório único por usuário do sistema, resolvido pela API do sistema operacional (`os.userInfo().homedir`). A spec, no §9.1, proíbe o servidor de depender de variáveis do ambiente base, e a API do sistema evita essa dependência. O diretório único junta o histórico de Claude Code e Codex, e também o dos clientes que entrarem depois. Se ele não for gravável, por exemplo dentro de um sandbox, a CLI usa `${PLUGIN_DATA}`, e uma preferência permite forçar o modo por cliente.
+Local do store (D4, decidida): um diretório único por usuário do sistema, resolvido pela API do sistema operacional (`os.userInfo().homedir`). A spec, no §9.1, proíbe o servidor de depender de variáveis do ambiente base, e a API do sistema evita essa dependência. O diretório único junta o histórico de Claude Code e Codex, e também o dos clientes que entrarem depois. Se ele não for gravável, por exemplo dentro de um sandbox, a CLI usa `${PLUGIN_DATA}`, e uma preferência permite forçar o modo por cliente. Esse fallback não preserva o histórico após a desinstalação quando o cliente remove os dados do plugin.
 
 ### 4.10 Preferências
 
@@ -423,13 +426,13 @@ Critério de saída: `npm run check` passa no esqueleto. Verificado localmente; 
 
 ### Fase 1: Spikes de verificação (concluída em 2026-09-13)
 
-Resultados completos em `docs/compatibility.md`, ferramentas em `spikes/` e payloads reais em `test/contract/fixtures/`. Os testes usaram perfis isolados com cópia temporária das credenciais, apagada no fim; `~/.claude` e `~/.codex` não mudaram.
+Resultados completos em `docs/compatibility.md`, ferramentas em `spikes/`, resumo sanitizado do recheck do Codex em `spikes/results/codex-0.154.0.json` e payloads reais em `test/contract/fixtures/`. Os testes usaram perfis isolados. O recheck do Codex usou um provedor HTTP local com respostas fixas e sem credenciais ou modelo real; `~/.claude` e `~/.codex` não mudaram.
 
 | Spike | Resultado |
 |-|-|
 | S1 Claude Code | O marketplace com `strict: false` instala o pacote canônico com hooks e MCP inline, sem conflito com o `plugin.json` da raiz. Contexto de `SessionStart`, `UserPromptSubmit` e `instructions` do MCP chega ao modelo, e o `Stop` traz `last_assistant_message`. Modo Completo. |
-| S2 Codex | Instala o pacote canônico pelo `.agents/plugins/marketplace.json`, carrega skills e o `mcp.json`, e **ignora hooks de pacotes Agent Plugins** em todas as cinco formas testadas. O código do Codex confirma: `loader.rs` não carrega hooks quando o manifesto é Agent Plugins, ao contrário da documentação da OpenAI. Pacotes legados (`.codex-plugin/plugin.json`) carregam hooks, que exigem confiança. Com o pacote canônico, modo Padrão. |
-| S3 `instructions` do MCP | Chegam ao modelo no Claude Code (`clientInfo.name` = `claude-code`) e não chegam no Codex (`codex-mcp-client`). |
+| S2 Codex | Instala o pacote canônico pelo `.agents/plugins/marketplace.json`, carrega skills e o `mcp.json`, e **ignora hooks de pacotes Agent Plugins** em todas as cinco formas testadas. O recheck no Codex 0.154.0 repetiu `0` hooks no canônico, `1` no legado e `0` no pacote misto. O código do Codex ainda não carrega hooks quando o manifesto é Agent Plugins, ao contrário da documentação da OpenAI. Pacotes legados (`.codex-plugin/plugin.json`) carregam hooks, que exigem confiança. Com o pacote canônico, modo Padrão. |
+| S3 `instructions` do MCP | Chegam ao modelo no Claude Code. No Codex 0.153.4 e 0.154.0, `gpt-5.4` recebe o texto na descrição de `tool_search`, não em `prompt.input`; `gpt-6-astra` não o recebe na primeira requisição, inclusive com `code_mode` desativado. A disponibilidade depende de modelo e configuração. |
 | S4 Store | Hooks e servidores MCP dos dois clientes gravam na home e no diretório de dados do plugin, inclusive com sandbox. 16 mil linhas gravadas por 8 processos simultâneos ficaram íntegras em tmpfs e ext4; Windows não foi testado, e o lock planejado fica. |
 
 Decisão resultante: D12, pacote legado gerado para o Codex (seção 8).
@@ -502,7 +505,7 @@ Critério de saída: metas atingidas ou desvios documentados.
 |-|-|-|
 | Claude Code sem suporte a Agent Plugins | o cliente principal depende de um marketplace específico | pacote canônico intacto, acompanhamento do CHANGELOG, remoção do caminho específico quando o suporte chegar |
 | Contratos de hooks mudam entre versões (Claude Code e Codex lançam versões com frequência; fora do MVP, o agy mudou o contrato na 1.2.x segundo claude-mem#4057) | hooks param de funcionar sem aviso | testes de contrato com fixtures versionadas, `tutor doctor`, saída vazia para payload desconhecido |
-| O Codex continua ignorando hooks de pacotes Agent Plugins, contra a própria documentação | o Codex depende de um pacote legado gerado | `adapters/codex/` gerado e verificado no CI; repetir o S2 a cada release do Codex e remover o adapter quando os hooks carregarem |
+| O Codex continua ignorando hooks de pacotes Agent Plugins, contra a própria documentação | o Codex depende de um pacote legado gerado | `adapters/codex/` gerado e verificado no CI; repetir o S2 a cada release do Codex com variantes canônica, legada e mista, e remover o adapter quando os hooks carregarem |
 | Um cliente futuro descarta o contexto injetado, como o Copilot CLI | sem gatilho por mensagem nesse cliente | modo Padrão documentado |
 | Correção vaza para código, commits ou arquivos | dano ao trabalho do usuário | regra explícita no protocolo e casos negativos na avaliação |
 | Excesso de correções | usuário desliga o tutor | teto de 3 linhas, silêncio quando não há erro, rigor configurável, pausa |
@@ -510,7 +513,8 @@ Critério de saída: metas atingidas ou desvios documentados.
 | Trechos de código proprietário no histórico | exposição de dados | só fragmentos curtos, filtro de segredos, store local, purge |
 | Node fora do PATH em clientes abertos pela interface gráfica | MCP e hooks não iniciam | `tutor doctor` e documentação; executável por plataforma avaliado na Fase 6 |
 | Revisão de confiança do Codex e políticas corporativas que bloqueiam hooks | modo Completo indisponível | degradação para o modo Padrão |
-| Hooks duplicados, como hooks manuais no estilo da Luna junto com o plugin | correção em dobro | deduplicação de lembrete por turno |
+| Hooks duplicados, como hooks manuais no estilo da Luna junto com o plugin | correção em dobro | deduplicação por `occurrence_id` e fragmento, sem apagar repetições de outros turnos |
+| Encerramento antes de uma captura assíncrona | a última correção pode não entrar no histórico | documentar a captura como melhor esforço e testar a interrupção do processo |
 | Convivência com os hooks do ai-memory já instalados | ordem de injeção e observações com ruído | teste de coexistência nos spikes e saídas curtas |
 | A spec evolui (1.1.0 em draft, hoje igual à 1.0.0 fora o número de versão) | retrabalho | `$schema` fixo em 1.0.0 e revisão da ADR a cada release da spec |
 
@@ -521,7 +525,7 @@ Critério de saída: metas atingidas ou desvios documentados.
 | D1 | Clientes do MVP | decidida | Claude Code e Codex; Copilot CLI, VS Code, agy, Cursor e Kiro depois do MVP |
 | D2 | Onde fica o pacote | decidida | `plugin/` em subdiretório, para não copiar código-fonte e testes para o cache dos clientes; Claude Code e Codex instalam a partir de subdiretório |
 | D3 | Rigor de conformidade | decidida | pacote 100% dentro da spec: arquivo específico de cliente só em namespace, em `extensions` ou fora do pacote, como o marketplace |
-| D4 | Local do histórico | decidida | store único por usuário, com fallback para `PLUGIN_DATA` |
+| D4 | Local do histórico | decidida | store único por usuário, com fallback para `PLUGIN_DATA`; o fallback pode ser removido pelo cliente na desinstalação |
 | D5 | Idioma das explicações | decidida | inglês, com nota em pt-BR nos falsos cognatos |
 | D6 | Mensagens escritas em português | decidida | ignorar por padrão, com `hint` opcional |
 | D7 | Runtime | decidida | TypeScript e Node: SDK MCP de referência e um bundle para todos os sistemas |
@@ -548,10 +552,10 @@ Referência e spec:
 Clientes:
 
 - Claude Code: [plugins reference](https://code.claude.com/docs/en/plugins-reference), [plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces), [hooks](https://code.claude.com/docs/en/hooks), [CHANGELOG](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
-- Codex e ChatGPT: [plugins](https://developers.openai.com/plugins) ([versão consolidada](https://developers.openai.com/plugins/llms-full.txt)), [hooks](https://learn.chatgpt.com/docs/hooks)
+- Codex e ChatGPT: [plugins](https://developers.openai.com/plugins) ([versão consolidada](https://developers.openai.com/plugins/llms-full.txt)), [hooks](https://learn.chatgpt.com/docs/hooks), [changelog do Codex](https://learn.chatgpt.com/docs/changelog)
 - VS Code: [agent plugins](https://code.visualstudio.com/docs/agent-customization/agent-plugins), [hooks](https://code.visualstudio.com/docs/agent-customization/hooks)
 - GitHub Copilot: [CLI plugin reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference), [hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference), [copilot-cli#2142](https://github.com/github/copilot-cli/issues/2142)
 - Antigravity CLI: [plugins](https://antigravity.google/docs/cli/plugins/), [migração do Gemini CLI](https://antigravity.google/docs/cli/gcli-migration/), [Mete Atamel sobre plugins](https://atamel.dev/posts/2026/08-18_where_agy_plugins/), [claude-mem#4057](https://github.com/thedotmack/claude-mem/issues/4057)
 - Campo `instructions` do MCP: [claude-code#43749](https://github.com/anthropics/claude-code/issues/43749), [sudoall.com sobre server instructions](https://sudoall.com/mcp-server-instructions/)
 
-Evidência local em 2026-09-13: Claude Code 2.1.270, codex-cli 0.153.4, GitHub Copilot CLI 1.0.78, agy 1.1.27, VS Code 1.137.0, Node v24.14.1, e o teste do plugin de sonda descrito na seção 3.4.
+Evidência local em 2026-09-13: Claude Code 2.1.270, codex-cli 0.153.4 e recheck no codex-cli 0.154.0, GitHub Copilot CLI 1.0.78, agy 1.1.27, VS Code 1.137.0, Node v24.14.1, e o teste do plugin de sonda descrito na seção 3.4.

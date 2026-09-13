@@ -18,7 +18,7 @@ Client support observed on 2026-09-13:
 | Client | Loads Agent Plugins 1.0 | Per-message context injection |
 |-|-|-|
 | Claude Code 2.1.270 | no | yes, `UserPromptSubmit` |
-| Codex CLI 0.153.4 | yes | yes, `UserPromptSubmit`; plugin hooks need a trust review |
+| Codex CLI 0.153.4 and 0.154.0 | yes | yes with the legacy package's `UserPromptSubmit`; plugin hooks need a trust review |
 | GitHub Copilot CLI 1.0.78 | yes | no, output of file-based `userPromptSubmitted` hooks is dropped |
 | Antigravity CLI 1.1.27 | partially | yes, `PreInvocation` |
 
@@ -35,7 +35,7 @@ Clients without per-message injection run in Standard mode: the user turns tutor
 
 ## Consequences
 
-- Any Agent Plugins client loads the core without client-specific code.
+- Clients that load the required portable components and MCP transport load the core without client-specific code.
 - Supporting a new client takes one adapter and one spike, with no change to the core.
 - Claude Code, the main client, depends on a marketplace entry with `strict: false` until it implements Agent Plugins.
 - Codex depends on the generated legacy package until it loads hooks from Agent Plugins packages.
@@ -44,7 +44,7 @@ Clients without per-message injection run in Standard mode: the user turns tutor
 
 ## Update 2026-09-13: Codex hooks
 
-The Phase 1 spikes ([docs/compatibility.md](../compatibility.md)) showed that Codex 0.153.4 never loads hooks from a package with a root `plugin.json`, whatever `extensions.com.openai.hooks` declares. The Codex loader returns no hook sources for the Agent Plugins manifest format, although the OpenAI documentation describes that field. Codex does load hooks from legacy `.codex-plugin/plugin.json` packages.
+The Phase 1 spikes ([docs/compatibility.md](../compatibility.md)) showed that Codex 0.153.4 never loads hooks from a package with a root `plugin.json`, whatever `extensions.com.openai.hooks` declares. The 0.154.0 recheck repeated the result for canonical, legacy and mixed packages. The Codex loader returns no hook sources for the Agent Plugins manifest format, although the OpenAI documentation describes that field. Codex does load hooks from legacy `.codex-plugin/plugin.json` packages.
 
 Decision D12: the build generates `adapters/codex/`, a legacy Codex package with the same skills, bundle and metadata as `plugin/` plus `hooks/hooks.json`, and the Codex marketplace points to it. `plugin/` stays fully conformant. The adapter goes away when Codex loads hooks from Agent Plugins packages.
 
