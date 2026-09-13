@@ -7198,7 +7198,7 @@ var require_dist = __commonJS({
 });
 
 // src/version.ts
-var VERSION = "0.0.0";
+var VERSION = "0.1.0";
 
 // src/cli.ts
 var USAGE = `tutor ${VERSION}

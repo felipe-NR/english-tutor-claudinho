@@ -2,11 +2,33 @@
 
 An [Agent Plugins 1.0.0](https://agent-plugins.org/specification) plugin that turns your coding agent into an English tutor. It corrects the English in the messages you send, records the mistakes you repeat and reviews them with you. It is tuned for Brazilian Portuguese speakers and builds on [Luna's Claude Code hooks setup](https://blog.stackademic.com/turning-my-coding-tool-into-an-english-tutor-with-claude-code-hooks-de3384f09b7f).
 
+MVP clients: Claude Code and Codex.
+
+## Install
+
+Two commands per client. Both add this repository as a plugin marketplace, then install the plugin from it.
+
+### Claude Code
+
+```sh
+claude plugin marketplace add felipe-NR/english-tutor-claudinho
+claude plugin install english-tutor-claudinho@english-tutor-claudinho
+```
+
+The plugin brings the `english-tutor` skill, the MCP server and the hooks that trigger the tutor on every message. Node.js 22 or later must be on the PATH.
+
+### Codex
+
+```sh
+codex plugin marketplace add felipe-NR/english-tutor-claudinho
+codex plugin add english-tutor-claudinho@english-tutor-claudinho
+```
+
+Codex loads the skill and the MCP server from this package but ignores its hooks, so the message trigger ships as a legacy package under `adapters/codex/` that the same marketplace installs. Codex asks you to trust the plugin's hooks on install; approve it, or the tutor stays silent. In non-interactive `codex exec` runs, hooks are skipped unless you pass `--dangerously-bypass-hook-trust`. See [docs/compatibility.md](docs/compatibility.md) for the client behavior this relies on.
+
 ## Status
 
-Phases 0 (foundation), 1 (client verification), 2 (portable core) and 3 (trigger adapters) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. The MCP server, the `english-tutor` skill, the local store and the Claude Code and Codex hooks work against the built bundle; a clean-profile install and installation instructions arrive with phase 4.
-
-MVP clients: Claude Code and Codex.
+Phases 0 (foundation), 1 (client verification), 2 (portable core), 3 (trigger adapters) and 4 (packaging and distribution) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. This is release `0.1.0`.
 
 ## Design
 
@@ -29,7 +51,7 @@ npm run build   # rebuild plugin/dist/tutor.mjs and adapters/codex/ after changi
 
 ## Em português
 
-O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. As Fases 0, 1, 2 e 3 foram concluídas: o servidor MCP, a skill, o histórico local e os hooks de Claude Code e Codex já funcionam contra o bundle; a instalação em perfil limpo vem na Fase 4. O [plano de implementação](docs/implementation-plan.md) está em português.
+O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. Instale com dois comandos por cliente (veja **Install** acima): no Claude Code, `claude plugin marketplace add felipe-NR/english-tutor-claudinho` e depois `claude plugin install english-tutor-claudinho@english-tutor-claudinho`; no Codex, os mesmos passos com `codex`. Esta é a versão `0.1.0`. O [plano de implementação](docs/implementation-plan.md) está em português.
 
 ## License
 

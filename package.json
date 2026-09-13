@@ -1,6 +1,6 @@
 {
   "name": "english-tutor-claudinho",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Agent Plugins 1.0.0 plugin that corrects the English in your messages to coding agents. Tuned for Brazilian Portuguese speakers.",
   "license": "MIT",
