@@ -23,6 +23,6 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src", "scripts", "test", "vitest.config.ts"],
+  "include": ["src", "scripts", "spikes", "test", "vitest.config.ts"],
   "exclude": ["test/fixtures/eslint"]
 }

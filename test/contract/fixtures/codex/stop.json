@@ -1,0 +1,11 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000003",
+  "turn_id": "00000000-0000-4000-8000-000000000004",
+  "transcript_path": "/home/user/.codex/sessions/2026/09/13/rollout-2026-09-13T02-21-12-00000000-0000-4000-8000-000000000003.jsonl",
+  "cwd": "/home/user/project",
+  "hook_event_name": "Stop",
+  "model": "gpt-6-astra",
+  "permission_mode": "bypassPermissions",
+  "stop_hook_active": false,
+  "last_assistant_message": "OK"
+}
