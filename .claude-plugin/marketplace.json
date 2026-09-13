@@ -1,0 +1,56 @@
+{
+  "name": "english-tutor-claudinho",
+  "owner": {
+    "name": "Felipe Neves Ricardo"
+  },
+  "plugins": [
+    {
+      "name": "english-tutor-claudinho",
+      "source": "./plugin",
+      "strict": false,
+      "skills": "./skills/",
+      "mcpServers": {
+        "english-tutor": {
+          "command": "node",
+          "args": ["${CLAUDE_PLUGIN_ROOT}/dist/tutor.mjs", "mcp"]
+        }
+      },
+      "hooks": {
+        "SessionStart": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "node",
+                "args": ["${CLAUDE_PLUGIN_ROOT}/dist/tutor.mjs", "hook", "claude-code", "session-start"]
+              }
+            ]
+          }
+        ],
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "node",
+                "args": ["${CLAUDE_PLUGIN_ROOT}/dist/tutor.mjs", "hook", "claude-code", "user-prompt-submit"]
+              }
+            ]
+          }
+        ],
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "node",
+                "args": ["${CLAUDE_PLUGIN_ROOT}/dist/tutor.mjs", "hook", "claude-code", "stop"],
+                "async": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

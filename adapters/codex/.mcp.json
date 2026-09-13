@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "english-tutor": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/dist/tutor.mjs",
+        "mcp"
+      ]
+    }
+  }
+}

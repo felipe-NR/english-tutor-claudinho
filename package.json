@@ -20,7 +20,8 @@
     "test": "vitest run",
     "validate:plugin": "node scripts/validate-plugin.ts",
     "check:bundle": "node scripts/check-bundle.ts",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run validate:plugin && npm run check:bundle"
+    "check:codex-adapter": "node scripts/check-codex-adapter.ts",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run validate:plugin && npm run check:bundle && npm run check:codex-adapter"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

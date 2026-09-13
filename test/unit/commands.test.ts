@@ -27,8 +27,8 @@ describe("dispatch", () => {
     expect((await dispatch(["nope"])).handled).toBe(false);
   });
 
-  it("treats a hook as a safe no-op", async () => {
-    expect(await dispatch(["hook", "codex", "user-prompt-submit"])).toEqual({
+  it("treats a hook with an unknown client as a safe no-op", async () => {
+    expect(await dispatch(["hook", "unknown-client", "user-prompt-submit"])).toEqual({
       handled: true,
       exitCode: 0,
       stdout: "",
