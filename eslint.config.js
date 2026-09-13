@@ -29,7 +29,7 @@ const bannedTypeEscapes = [
 ];
 
 export default defineConfig(
-  globalIgnores(["node_modules/", "coverage/", "plugin/dist/", "test/fixtures/eslint/"]),
+  globalIgnores(["node_modules/", "coverage/", "plugin/dist/", "adapters/", "test/fixtures/eslint/"]),
   {
     // Inline eslint-disable comments would let code opt out of the bans.
     linterOptions: { noInlineConfig: true },

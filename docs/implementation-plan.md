@@ -1,6 +1,6 @@
 # Plano de implementação: english-tutor-claudinho
 
-- Status: decisões D1 a D11 tomadas em 2026-09-13 (seção 8); Fases 0, 1 e 2 concluídas em 2026-09-13; D12 tomada em 2026-09-13
+- Status: decisões D1 a D11 tomadas em 2026-09-13 (seção 8); Fases 0, 1, 2 e 3 concluídas em 2026-09-13; D12 tomada em 2026-09-13
 - Data: 2026-09-13
 - Base normativa: [Agent Plugins Specification 1.0.0](https://agent-plugins.org/specification), [Agent Skills](https://agentskills.io/specification), [Model Context Protocol](https://modelcontextprotocol.io/specification)
 
@@ -449,14 +449,14 @@ Decisão resultante: D12, pacote legado gerado para o Codex (seção 8).
 
 Critério de saída: o pacote passa no validador (`npm run validate:plugin`), e o modo Padrão funciona de ponta a ponta contra o bundle pelo transporte stdio que o `mcp.json` inicia, o mesmo caminho que o Codex usa. `npm run check` passa. Falta a confirmação em execução real dentro do Codex, que entra no perfil limpo da Fase 4.
 
-### Fase 3: Adaptadores de gatilho
+### Fase 3: Adaptadores de gatilho (concluída em 2026-09-13)
 
-- `src/hooks/claude-code` e `src/hooks/codex`.
-- Hooks do Claude Code inline no marketplace e geração de `adapters/codex/` com os hooks do Codex.
-- Captura no fim do turno, deduplicação de lembrete, kill switch e `disabled_projects`.
-- Testes de contrato com as fixtures da Fase 1.
+- `src/hooks/claude-code.ts` e `src/hooks/codex.ts`: só traduzem o payload de cada cliente para uma forma normalizada. `src/hooks/runner.ts` orquestra o comportamento e chama o núcleo; `src/hooks/gates.ts` guarda o kill switch, a pausa e os projetos desativados. Nenhum texto pedagógico mora nos hooks.
+- Injeção do protocolo compacto no início da sessão (ignorando `source` igual a `resume`), lembrete por mensagem uma vez por turno (marcador atômico em `state/`) e captura no fim do turno lendo o marcador `✏️` da resposta final. O `occurrence_id` opaco vem de cliente + sessão + turno, igual no lembrete e na captura, e a deduplicação do store une repetições da mesma ocorrência.
+- Hooks do Claude Code inline em `.claude-plugin/marketplace.json`. Pacote legado do Codex gerado em `adapters/codex/` pelo `npm run build`, com `hooks/hooks.json` no formato do Codex, `.mcp.json`, skills e bundle. `.agents/plugins/marketplace.json` aponta para ele. O CI confere que o adapter corresponde a `plugin/` (`npm run check:codex-adapter`).
+- Testes de contrato alimentam as fixtures da Fase 1 aos adaptadores, mais testes de kill switch, pausa, projeto desativado, dedup de lembrete e captura.
 
-Critério de saída: modo Completo funcionando no Claude Code e no Codex (ou Padrão, se um spike reclassificar algum deles), e um erro interno simulado não quebra a sessão.
+Critério de saída: o comportamento de modo Completo funciona ponta a ponta contra o bundle para os dois clientes nos testes de contrato, e um payload malformado ou um erro interno termina em exit 0 com saída vazia, sem quebrar a sessão. Falta a confirmação em execução real dentro de cada cliente, que entra no perfil limpo da Fase 4.
 
 ### Fase 4: Empacotamento e distribuição
 

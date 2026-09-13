@@ -1,8 +1,11 @@
+import { text as readStream } from "node:stream/consumers";
 import type { ZodError } from "zod";
 import { type Preferences, readPreferences, PreferencesUpdate, updatePreferences } from "./core/preferences.ts";
 import { resolveReferencesDir, resolveStoreDir } from "./core/paths.ts";
 import { renderReport, ReportPeriod } from "./core/report.ts";
 import { purgeCorrections, readCorrections } from "./core/store.ts";
+import { runHook } from "./hooks/runner.ts";
+import { ClientId, HookEvent } from "./hooks/types.ts";
 import { startStdioServer } from "./mcp/stdio.ts";
 
 export interface CommandOutcome {
@@ -31,11 +34,35 @@ export async function dispatch(argv: readonly string[]): Promise<CommandOutcome>
     case "doctor":
       return doctor();
     case "hook":
-      // Trigger adapters arrive in phase 3. Until then a hook is a safe no-op:
-      // it never breaks a session, so it exits 0 with no output.
-      return { handled: true, exitCode: 0, stdout: "", stderr: "" };
+      return hook(rest);
     default:
       return UNHANDLED;
+  }
+}
+
+// A hook translates one client event. It must never break a session: an
+// unknown client or event, an unreachable store or any internal error all end
+// as exit 0 with the client's empty output (plan §4.3).
+async function hook(args: readonly string[]): Promise<CommandOutcome> {
+  const client = ClientId.safeParse(args[0]);
+  const event = HookEvent.safeParse(args[1]);
+  if (!client.success || !event.success) {
+    return { handled: true, exitCode: 0, stdout: "", stderr: "" };
+  }
+  const dir = safeStoreDir();
+  if (dir === undefined) {
+    return { handled: true, exitCode: 0, stdout: "", stderr: "" };
+  }
+  const payload = await readStream(process.stdin).catch(() => "");
+  const stdout = await runHook(client.data, event.data, payload, dir);
+  return { handled: true, exitCode: 0, stdout, stderr: "" };
+}
+
+function safeStoreDir(): string | undefined {
+  try {
+    return resolveStoreDir().dir;
+  } catch {
+    return undefined;
   }
 }
 

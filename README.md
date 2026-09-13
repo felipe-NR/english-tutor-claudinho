@@ -4,7 +4,7 @@ An [Agent Plugins 1.0.0](https://agent-plugins.org/specification) plugin that tu
 
 ## Status
 
-Phases 0 (foundation), 1 (client verification) and 2 (portable core) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. The MCP server, the `english-tutor` skill and the local store work; the per-message trigger (hooks) and installation instructions arrive with the next phases.
+Phases 0 (foundation), 1 (client verification), 2 (portable core) and 3 (trigger adapters) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. The MCP server, the `english-tutor` skill, the local store and the Claude Code and Codex hooks work against the built bundle; a clean-profile install and installation instructions arrive with phase 4.
 
 MVP clients: Claude Code and Codex.
 
@@ -22,14 +22,14 @@ Development requires Node.js 24 (see `.nvmrc`). The bundled CLI runs on Node.js 
 ```sh
 npm ci
 npm run check   # lint, typecheck, tests, plugin conformance, bundle freshness
-npm run build   # rebuild plugin/dist/tutor.mjs after changing src/
+npm run build   # rebuild plugin/dist/tutor.mjs and adapters/codex/ after changing src/
 ```
 
-`plugin/dist/tutor.mjs` is committed because installs from git run no build step. Rules for contributors and coding agents live in [AGENTS.md](AGENTS.md).
+`plugin/dist/tutor.mjs` and the generated `adapters/codex/` are committed because installs from git run no build step, and CI checks both stay in sync with the sources. Rules for contributors and coding agents live in [AGENTS.md](AGENTS.md).
 
 ## Em português
 
-O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. As Fases 0, 1 e 2 foram concluídas: o servidor MCP, a skill e o histórico local já funcionam; o gatilho por mensagem e a instalação vêm nas próximas fases. O [plano de implementação](docs/implementation-plan.md) está em português.
+O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. As Fases 0, 1, 2 e 3 foram concluídas: o servidor MCP, a skill, o histórico local e os hooks de Claude Code e Codex já funcionam contra o bundle; a instalação em perfil limpo vem na Fase 4. O [plano de implementação](docs/implementation-plan.md) está em português.
 
 ## License
 
