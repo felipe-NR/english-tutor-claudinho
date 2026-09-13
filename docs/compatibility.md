@@ -19,6 +19,7 @@ Verified on 2026-09-13 with the Phase 1 spikes, on Linux 7.0 and Node.js 24.14.1
 | Hooks and MCP servers write the per-user store | yes, also with the sandbox enabled | yes, also with `-s read-only` |
 | Mode with the canonical package | **Completo** | **Padrão** |
 | Mode with the generated legacy package (decision D12) | not applicable | **Completo** |
+| Correction-protocol adherence, real-model live run (S5) | strong: 3 of 3 caught, correct format, recorded | weak: 1 of 3 caught, wrong format, not recorded |
 
 ## S1: Claude Code
 
@@ -55,6 +56,31 @@ The 0.154.0 request summaries are identical to the 0.153.4 baseline. The MCP ser
 - Hooks and MCP servers of both clients created and wrote files in a directory under the OS user's home and in the client's plugin data directory. That held with the Claude Code sandbox enabled (`{"sandbox":{"enabled":true}}`) and with Codex `-s read-only`; both sandboxes govern the model's shell commands, not hooks or MCP servers.
 - Plugin data directories: Claude Code uses `<config>/plugins/data/<plugin>-<marketplace>`; Codex uses `<CODEX_HOME>/plugins/data/agent-plugins/<sha256>` for Agent Plugins packages and `<CODEX_HOME>/plugins/data/<plugin>-<marketplace>` for legacy packages.
 - `spikes/concurrent-append.ts` ran 8 processes appending 2,000 lines each with `appendFileSync`. With 200-byte and 8,000-byte lines, on tmpfs (3 runs) and ext4 (1 run), every one of the 16,000 lines parsed and none was lost or repeated. Windows was not tested, so the store keeps the planned file lock.
+
+## S5: Live real-model run of release 0.1.0
+
+The S1-S4 spikes used fixed-response servers and called no real model. This section records the first live run of the released `0.1.0` plugin against real models, installed from the GitHub-shorthand marketplace (`felipe-NR/english-tutor-claudinho`, commit `f723a2f`) into an existing profile on 2026-09-13. These are single, non-deterministic observations, not a measured eval; they are Phase 5 input, not a precision or recall number.
+
+Install followed the README verbatim: `claude plugin marketplace add` then `claude plugin install` for Claude Code, and `codex plugin marketplace add` then `codex plugin add` for Codex. Both resolved the GitHub shorthand and the repo-relative sources (`./plugin`; `./adapters/codex` for the Codex hooks). Codex installed the plugin from `adapters/codex`, the legacy package, and `codex mcp list` showed the `english-tutor` MCP server enabled, loaded from its `.mcp.json`.
+
+The same English-error message went to both clients: "I have a doubt about promises. Can you explain me how async works? I am developer since 5 years and I still confuse this."
+
+Claude Code (2.1.270, default model, `claude -p`, model not pinned):
+
+- Caught all three errors and opened the reply with the protocol format: `✏️ [doubt-question]`, `✏️ [verb-pattern]`, `✏️ [tense-aspect]`, each with the arrow, a short reason, and a pt-BR note where the category calls for one.
+- Called `record_corrections`; the three fragments persisted in pattern tracking and the daily log.
+- A correct-English message and a Portuguese message each drew no correction, and the Portuguese one was answered in Portuguese, matching `portuguese_messages: ignore`.
+
+Codex (0.154.0, `gpt-5.6-terra`, `codex exec --dangerously-bypass-hook-trust --skip-git-repo-check -s read-only`):
+
+- Caught one of the three errors ("explain me" to "explain ... to me"). It missed the `doubt-question` false friend and the `tense-aspect` error.
+- Wrote a single loose "Small English note" at the bottom of the reply instead of the `✏️ [category]` lines at the top.
+- Did not call `record_corrections`; nothing was written to the store.
+- The tutor hooks fired (their stdout reaches the model as developer messages, per S2) and the `english-tutor` MCP tools were exposed, so the protocol and the recording tool were both available. The gap is model adherence, not wiring, and it fits the S3 finding that MCP `instructions` reach Codex models inconsistently.
+
+`codex exec` printed interleaved `hook: ... Failed` lines, but ai-memory and computer-use also register hooks at those events and the tutor hooks exit 0 with correct output when run standalone, so the failures are not attributable to the tutor without a targeted single-plugin trace.
+
+For Phase 5: the protocol text that yields strong adherence on Claude Code under-performs on Codex `gpt-5.6-terra`, which is newer than the `gpt-5.4` and `gpt-6-astra` recorded in S3. The eval set and runner should measure Codex separately by model, and the protocol tuning should aim to raise Codex adherence (format and recording) toward the Claude Code baseline. `gpt-5.6-terra` is a new data point beyond the models S3 recorded.
 
 ## Environment variables
 
