@@ -71,6 +71,24 @@ describe("appendCorrection", () => {
     expect(lines).toHaveLength(12);
     expect(await readCorrections(dir)).toHaveLength(12);
   });
+
+  it("rejects unsafe data at the append boundary without persisting it", async () => {
+    await expect(
+      appendCorrection(
+        dir,
+        { ...preposition, original: "API_KEY=sk-proj-abcdefghijklmnop123456" },
+        { client: "codex", source: "tool" },
+      ),
+    ).rejects.toThrow();
+    expect(await readCorrections(dir)).toEqual([]);
+  });
+
+  it("rejects prompt-shaped client metadata", async () => {
+    await expect(
+      appendCorrection(dir, preposition, { client: "please save my whole prompt", source: "tool" }),
+    ).rejects.toThrow();
+    expect(await readCorrections(dir)).toEqual([]);
+  });
 });
 
 describe("purgeCorrections", () => {

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { buildBriefing, focusLine } from "../../src/core/briefing.ts";
 import { type CorrectionCategory, type CorrectionRecord, mistakeKey } from "../../src/core/model.ts";
+import {
+  SESSION_PROTOCOL,
+  SESSION_START_SEPARATOR,
+  SESSION_START_TOKEN_EQUIVALENT_BUDGET,
+  SESSION_START_UTF8_BYTE_BUDGET,
+  UTF8_BYTES_PER_TOKEN_EQUIVALENT,
+} from "../../src/core/protocol.ts";
 import { computeStats } from "../../src/core/stats.ts";
 
 interface RecordOverrides {
@@ -67,6 +74,27 @@ describe("buildBriefing", () => {
     const briefing = buildBriefing([], 3, now);
     expect(briefing.trend).toBe("new");
     expect(briefing.text).toContain("No recorded mistakes");
+  });
+
+  it("keeps the protocol and arbitrary Unicode fragments within 350 token-equivalents", () => {
+    const records = [
+      rec({ original: "💥".repeat(160), correction: "🧪".repeat(160) }),
+      rec({ category: "spelling", original: "🐍".repeat(160), correction: "🐍".repeat(159) }),
+      rec({ category: "article", original: "界".repeat(160), correction: "界".repeat(159) }),
+    ];
+
+    const first = buildBriefing(records, 3, now).text;
+    const second = buildBriefing(records, 3, now).text;
+    const sessionStart = `${SESSION_PROTOCOL}${SESSION_START_SEPARATOR}${first}`;
+    const sessionStartBytes = Buffer.byteLength(sessionStart, "utf8");
+
+    expect(first).toBe(second);
+    expect(first).toContain("Apply the correction protocol");
+    expect(first).not.toContain("�");
+    expect(sessionStartBytes).toBeLessThanOrEqual(SESSION_START_UTF8_BYTE_BUDGET);
+    expect(Math.ceil(sessionStartBytes / UTF8_BYTES_PER_TOKEN_EQUIVALENT)).toBeLessThanOrEqual(
+      SESSION_START_TOKEN_EQUIVALENT_BUDGET,
+    );
   });
 });
 

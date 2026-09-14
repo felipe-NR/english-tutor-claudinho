@@ -27167,6 +27167,77 @@ import { randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile as readFile2, rm, stat, writeFile as writeFile2 } from "node:fs/promises";
 import { join as join3 } from "node:path";
 
+// src/core/privacy.ts
+var KNOWN_SECRET_PATTERNS = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/u,
+  /\bAKIA[0-9A-Z]{16}\b/u,
+  /\b(?:gh[pousr]|github_pat)_[A-Za-z0-9_]{16,}\b/u,
+  /\bglpat-[A-Za-z0-9_-]{16,}\b/u,
+  /\b(?:sk|rk|pk)-(?:proj-)?[A-Za-z0-9_-]{16,}\b/u,
+  /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/u,
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/u,
+  /\b(?:Basic|Bearer)\s+[A-Za-z0-9._~+/=-]{8,}\b/iu,
+  /\b[a-z][a-z0-9+.-]*:\/\/[^\s/:]+:[^\s/@]+@/iu,
+  /\b(?:api[-_ ]?key|access[-_ ]?token|auth(?:orization)?|client[-_ ]?secret|password|passwd|pwd|secret)\b\s*(?:=|:|\bis\b)\s*(?:"[^"\s]{4,}"|'[^'\s]{4,}'|[^\s,;]{4,})/iu
+];
+var CODE_PATTERNS = [
+  /```|~~~/u,
+  /`[^`]+`/u,
+  /[{}]|=>|===|!==|&&|\|\||::|\?\.|\?\?/u,
+  /(?:^|\s)(?:const|let|var)\s+[$_\p{L}][$_\p{L}\p{N}]*\s*(?:[=:;])/u,
+  /\b(?:function|class|interface|enum)\s+[$_\p{L}][$_\p{L}\p{N}]*\s*(?:[({<:=]|\bextends\b|\bimplements\b)/u,
+  /\b(?:import|export)\s+(?:[{*]|\w+\s+from\b)/u,
+  /\b[$_A-Za-z][$_A-Za-z0-9]*\s*\([^\n)]*\)\s*;?/u,
+  /"[^"\n]+"\s*:/u,
+  /<\/?[A-Za-z][^>]*>/u,
+  /(?:^|\s)(?:~|\.{1,2})?\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+/u,
+  /\b[A-Za-z]:\\[^\s]+/u,
+  /https?:\/\/\S+/iu,
+  /^\s*(?:[$>#]\s*)?(?:npm|npx|pnpm|yarn|git|curl|wget|sudo|docker|kubectl)\s+\S/iu,
+  /^\s*(?:\d{4}-\d{2}-\d{2}[T\s]|(?:ERROR|WARN|INFO|DEBUG|TRACE)\b|[A-Za-z]*Error:\s|Traceback\b)/u,
+  /\bat\s+\S+\s+\([^\n)]+:\d+:\d+\)/u
+];
+var PROMPT_WRAPPER = /(?:^|\s)(?:system|assistant|developer|user)\s*:\s|<\/?(?:system|assistant|developer|user|instructions?|environment_context)>|^\s*#{1,6}\s+(?:task|instructions?|prompt|request)\b/iu;
+var DEVELOPER_REQUEST = /^\s*(?:please\s+)?(?:analy[sz]e|build|commit|create|debug|delete|deploy|edit|fix|implement|inspect|open|push|read|refactor|review|run|test|update|write)\b/iu;
+var TOKEN_CANDIDATE = /[A-Za-z0-9_+/=-]{32,}/gu;
+var WORD = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)?/gu;
+var SENTENCE_END = new RegExp("[!?](?=\\s|$)|\\.(?=\\s+\\p{Lu}|$)", "gu");
+var MAX_FRAGMENT_WORDS = 24;
+function isSafeStoredText(value) {
+  return !value.includes("\n") && !value.includes("\r") && !looksLikeSecret(value) && !CODE_PATTERNS.some((pattern) => pattern.test(value)) && !looksLikeWholePrompt(value);
+}
+function isSafeStoredIdentifier(value) {
+  return /^[A-Za-z0-9._:-]+$/u.test(value) && !looksLikeSecret(value);
+}
+function looksLikeSecret(value) {
+  if (KNOWN_SECRET_PATTERNS.some((pattern) => pattern.test(value))) {
+    return true;
+  }
+  const candidates = value.match(TOKEN_CANDIDATE) ?? [];
+  return candidates.some((candidate) => {
+    const hasLower = /[a-z]/u.test(candidate);
+    const hasUpper = /[A-Z]/u.test(candidate);
+    const hasDigit = /\d/u.test(candidate);
+    const hasTokenPunctuation = /[_+/=-]/u.test(candidate);
+    const isLongHex = /^[A-Fa-f0-9]{32,}$/u.test(candidate);
+    return isLongHex || hasLower && hasUpper && hasDigit || hasTokenPunctuation && hasDigit && (hasLower || hasUpper);
+  });
+}
+function looksLikeWholePrompt(value) {
+  if (PROMPT_WRAPPER.test(value)) {
+    return true;
+  }
+  const words = value.match(WORD) ?? [];
+  if (words.length > MAX_FRAGMENT_WORDS) {
+    return true;
+  }
+  const sentenceEnds = value.match(SENTENCE_END) ?? [];
+  if (sentenceEnds.length > 1) {
+    return true;
+  }
+  return value.length >= 48 && DEVELOPER_REQUEST.test(value);
+}
+
 // src/core/model.ts
 var MAX_FRAGMENT_LENGTH = 160;
 var CorrectionCategory = external_exports.enum([
@@ -27188,26 +27259,32 @@ var CorrectionCategory = external_exports.enum([
   "code-switching"
 ]);
 var CorrectionSource = external_exports.enum(["hook", "tool"]);
-var fragment = external_exports.string().trim().min(1).max(MAX_FRAGMENT_LENGTH);
+var unsafeTextMessage = "must be a short prose fragment without prompts, code, or secret-shaped values";
+var fragment = external_exports.string().trim().min(1).max(MAX_FRAGMENT_LENGTH).refine(isSafeStoredText, unsafeTextMessage);
+var reason = external_exports.string().trim().max(MAX_FRAGMENT_LENGTH).refine((value) => value === "" || isSafeStoredText(value), unsafeTextMessage);
+var occurrenceId = external_exports.string().min(1).max(128).refine(isSafeStoredIdentifier, "must be an opaque identifier without secret-shaped values");
 var CorrectionInput = external_exports.object({
   original: fragment,
   correction: fragment,
   category: CorrectionCategory,
-  reason: external_exports.string().trim().max(MAX_FRAGMENT_LENGTH),
-  occurrence_id: external_exports.string().min(1).max(128).optional()
+  reason,
+  occurrence_id: occurrenceId.optional()
 });
 var CorrectionRecord = external_exports.object({
-  id: external_exports.string(),
-  occurrence_id: external_exports.string().optional(),
+  id: external_exports.uuid(),
+  occurrence_id: occurrenceId.optional(),
   mistake_key: external_exports.string(),
-  ts: external_exports.string(),
-  client: external_exports.string(),
+  ts: external_exports.iso.datetime(),
+  client: external_exports.string().trim().min(1).max(64).refine(isSafeStoredIdentifier),
   category: CorrectionCategory,
-  original: external_exports.string(),
-  correction: external_exports.string(),
-  reason: external_exports.string(),
+  original: fragment,
+  correction: fragment,
+  reason,
   source: CorrectionSource
-});
+}).refine(
+  (record2) => record2.mistake_key === mistakeKey(record2.category, record2.original, record2.correction),
+  "mistake key must match the stored fragments"
+);
 var CATEGORY_FOCUS = {
   "false-friend": "false friends (actually vs. currently)",
   "doubt-question": "question vs. doubt",
@@ -27241,6 +27318,11 @@ var LOCK_DIR = ".lock";
 var LOCK_TIMEOUT_MS = 3e3;
 var LOCK_RETRY_MS = 20;
 var LOCK_STALE_MS = 1e4;
+var RecordMetaInput = external_exports.object({
+  client: external_exports.string().trim().min(1).max(64).refine(isSafeStoredIdentifier),
+  source: CorrectionSource,
+  ts: external_exports.iso.datetime().optional()
+});
 async function readCorrections(dir) {
   const text2 = await readFile2(join3(dir, CORRECTIONS_FILE), "utf8").catch(() => "");
   const records = [];
@@ -27265,6 +27347,7 @@ function safeParseLine(line) {
 }
 async function appendCorrection(dir, rawInput, meta3) {
   const input2 = CorrectionInput.parse(rawInput);
+  const validatedMeta = RecordMetaInput.parse(meta3);
   return withLock(dir, async () => {
     const existing = await readCorrections(dir);
     const key = mistakeKey(input2.category, input2.original, input2.correction);
@@ -27279,13 +27362,13 @@ async function appendCorrection(dir, rawInput, meta3) {
     const record2 = CorrectionRecord.parse({
       id: randomUUID(),
       mistake_key: key,
-      ts: meta3.ts ?? (/* @__PURE__ */ new Date()).toISOString(),
-      client: meta3.client,
+      ts: validatedMeta.ts ?? (/* @__PURE__ */ new Date()).toISOString(),
+      client: validatedMeta.client,
       category: input2.category,
       original: input2.original,
       correction: input2.correction,
       reason: input2.reason,
-      source: meta3.source,
+      source: validatedMeta.source,
       ...input2.occurrence_id !== void 0 ? { occurrence_id: input2.occurrence_id } : {}
     });
     await appendFile(join3(dir, CORRECTIONS_FILE), `${JSON.stringify(record2)}
@@ -27393,6 +27476,48 @@ function codexContextEventName(event) {
 import { appendFile as appendFile2, mkdir as mkdir3 } from "node:fs/promises";
 import { join as join5 } from "node:path";
 
+// src/core/protocol.ts
+import { createHash } from "node:crypto";
+var SESSION_START_TOKEN_EQUIVALENT_BUDGET = 350;
+var UTF8_BYTES_PER_TOKEN_EQUIVALENT = 4;
+var SESSION_START_SEPARATOR = "\n\n";
+var CORRECTION_MARKER = "\u270F\uFE0F";
+var SESSION_PROTOCOL = [
+  "[english-tutor] Act as my English tutor this session, alongside your normal work.",
+  "Evaluate only the prose I write. Ignore code, commands, logs, stack traces, quotes, URLs, paths and pasted text.",
+  `When my prose has errors, open your final reply with up to 3 lines, one per mistake: ${CORRECTION_MARKER} [category] "original" \u2192 "correction" (short reason).`,
+  "Use the category IDs from english-tutor://profile/pt-BR. Explanations in English, with a short pt-BR note for false-friend and doubt-question.",
+  "When my prose is correct, say nothing about English. Never put corrections into files, code, commit messages or PR descriptions."
+].join("\n");
+var SESSION_START_UTF8_BYTE_BUDGET = SESSION_START_TOKEN_EQUIVALENT_BUDGET * UTF8_BYTES_PER_TOKEN_EQUIVALENT;
+var SESSION_BRIEFING_UTF8_BYTE_BUDGET = SESSION_START_UTF8_BYTE_BUDGET - Buffer.byteLength(SESSION_PROTOCOL, "utf8") - Buffer.byteLength(SESSION_START_SEPARATOR, "utf8");
+function occurrenceId2(client, sessionId, turn) {
+  return createHash("sha256").update(`${client}\0${sessionId}\0${turn}`).digest("hex").slice(0, 16);
+}
+var LINE = new RegExp(
+  `${CORRECTION_MARKER}\\s*\\[([a-z-]+)\\]\\s*"([^"]*)"\\s*(?:\u2192|->)\\s*"([^"]*)"\\s*\\(([^)]*)\\)`,
+  "u"
+);
+function parseCorrectionLines(message) {
+  const corrections = [];
+  for (const line of message.split("\n")) {
+    const match = LINE.exec(line);
+    if (match === null) {
+      continue;
+    }
+    const parsed = CorrectionInput.safeParse({
+      category: match[1],
+      original: match[2],
+      correction: match[3],
+      reason: match[4]
+    });
+    if (parsed.success) {
+      corrections.push(parsed.data);
+    }
+  }
+  return corrections;
+}
+
 // src/core/briefing.ts
 var DEFAULT_LIMIT = 3;
 function buildBriefing(records, limit = DEFAULT_LIMIT, now) {
@@ -27432,52 +27557,51 @@ function renderBriefing(total, last7Days, trend, topPatterns, focus) {
   if (total === 0) {
     return "[english-tutor] No recorded mistakes yet. Corrections start once you write.";
   }
-  const lines = [`[english-tutor] ${String(total)} mistakes recorded, ${String(last7Days)} in the last 7 days (${trend}).`];
+  const header = `[english-tutor] ${String(total)} mistakes recorded, ${String(last7Days)} in the last 7 days (${trend}).`;
+  const focusText = focusLine(focus);
+  const lines = [header];
   if (topPatterns.length > 0) {
     lines.push("Top patterns:");
     for (const pattern of topPatterns) {
-      lines.push(`- [${pattern.category}] ${pattern.original} \u2192 ${pattern.correction} (${String(pattern.count)}x)`);
+      const line = `- [${pattern.category}] ${pattern.original} \u2192 ${pattern.correction} (${String(pattern.count)}x)`;
+      const withoutPattern = [...lines, focusText].join("\n");
+      const availableBytes = SESSION_BRIEFING_UTF8_BYTE_BUDGET - Buffer.byteLength(withoutPattern, "utf8") - 1;
+      if (availableBytes <= 0) {
+        break;
+      }
+      const fitted = fitUtf8(line, availableBytes);
+      if (fitted.length === 0) {
+        break;
+      }
+      lines.push(fitted);
+      if (fitted !== line) {
+        break;
+      }
     }
   }
-  lines.push(focusLine(focus));
-  return lines.join("\n");
+  lines.push(focusText);
+  return fitUtf8(lines.join("\n"), SESSION_BRIEFING_UTF8_BYTE_BUDGET);
 }
-
-// src/core/protocol.ts
-import { createHash } from "node:crypto";
-var CORRECTION_MARKER = "\u270F\uFE0F";
-var SESSION_PROTOCOL = [
-  "[english-tutor] Act as my English tutor this session, alongside your normal work.",
-  "Evaluate only the prose I write. Ignore code, commands, logs, stack traces, quotes, URLs, paths and pasted text.",
-  `When my prose has errors, open your final reply with up to 3 lines, one per mistake: ${CORRECTION_MARKER} [category] "original" \u2192 "correction" (short reason).`,
-  "Use the category IDs from english-tutor://profile/pt-BR. Explanations in English, with a short pt-BR note for false-friend and doubt-question.",
-  "When my prose is correct, say nothing about English. Never put corrections into files, code, commit messages or PR descriptions."
-].join("\n");
-function occurrenceId(client, sessionId, turn) {
-  return createHash("sha256").update(`${client}\0${sessionId}\0${turn}`).digest("hex").slice(0, 16);
-}
-var LINE = new RegExp(
-  `${CORRECTION_MARKER}\\s*\\[([a-z-]+)\\]\\s*"([^"]*)"\\s*(?:\u2192|->)\\s*"([^"]*)"\\s*\\(([^)]*)\\)`,
-  "u"
-);
-function parseCorrectionLines(message) {
-  const corrections = [];
-  for (const line of message.split("\n")) {
-    const match = LINE.exec(line);
-    if (match === null) {
-      continue;
-    }
-    const parsed = CorrectionInput.safeParse({
-      category: match[1],
-      original: match[2],
-      correction: match[3],
-      reason: match[4]
-    });
-    if (parsed.success) {
-      corrections.push(parsed.data);
-    }
+function fitUtf8(text2, maxBytes) {
+  if (Buffer.byteLength(text2, "utf8") <= maxBytes) {
+    return text2;
   }
-  return corrections;
+  const ellipsis = "\u2026";
+  const ellipsisBytes = Buffer.byteLength(ellipsis, "utf8");
+  if (maxBytes < ellipsisBytes) {
+    return "";
+  }
+  let fitted = "";
+  let fittedBytes = ellipsisBytes;
+  for (const character of text2) {
+    const characterBytes = Buffer.byteLength(character, "utf8");
+    if (fittedBytes + characterBytes > maxBytes) {
+      break;
+    }
+    fitted += character;
+    fittedBytes += characterBytes;
+  }
+  return `${fitted.trimEnd()}${ellipsis}`;
 }
 
 // src/core/state.ts
@@ -27657,7 +27781,7 @@ async function sessionStart(input2, storeDir, briefingOn, now) {
 ${briefing.text}`;
 }
 async function userPromptSubmit(client, input2, storeDir, now) {
-  const occurrence = occurrenceId(client, input2.sessionId, input2.turn);
+  const occurrence = occurrenceId2(client, input2.sessionId, input2.turn);
   if (!await claimOnce(storeDir, `reminder-${occurrence}`)) {
     return "";
   }
@@ -27668,7 +27792,7 @@ async function stop(client, input2, storeDir) {
   if (input2.lastAssistantMessage === void 0) {
     return;
   }
-  const occurrence = occurrenceId(client, input2.sessionId, input2.turn);
+  const occurrence = occurrenceId2(client, input2.sessionId, input2.turn);
   for (const correction of parseCorrectionLines(input2.lastAssistantMessage)) {
     await appendCorrection(storeDir, { ...correction, occurrence_id: occurrence }, { client, source: "hook" });
   }
@@ -35349,7 +35473,7 @@ var Protocol = class {
           }
         };
       }
-      const cancel = (reason) => {
+      const cancel = (reason2) => {
         this._responseHandlers.delete(messageId);
         this._progressHandlers.delete(messageId);
         this._cleanupTimeout(messageId);
@@ -35358,10 +35482,10 @@ var Protocol = class {
           method: "notifications/cancelled",
           params: {
             requestId: messageId,
-            reason: String(reason)
+            reason: String(reason2)
           }
         }, { relatedRequestId, resumptionToken, onresumptiontoken }).catch((error63) => this._onerror(new Error(`Failed to send cancellation: ${error63}`)));
-        const error62 = reason instanceof McpError ? reason : new McpError(ErrorCode.RequestTimeout, String(reason));
+        const error62 = reason2 instanceof McpError ? reason2 : new McpError(ErrorCode.RequestTimeout, String(reason2));
         reject(error62);
       };
       this._responseHandlers.set(messageId, (response) => {

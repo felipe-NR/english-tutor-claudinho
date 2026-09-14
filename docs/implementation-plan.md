@@ -395,7 +395,7 @@ Local do store (D4, decidida): um diretório único por usuário do sistema, res
 
 ### 4.11 Orçamento inicial
 
-Metas medidas e ajustadas na Fase 5:
+O teto de contexto foi implementado na Fase 5; as demais metas são medidas e ajustadas na Fase 6:
 
 | Item | Teto |
 |-|-|
@@ -468,18 +468,26 @@ Critério de saída: o comportamento de modo Completo funciona ponta a ponta con
 
 Critério de saída: instalação em perfil limpo do Claude Code e do Codex seguindo apenas o README.
 
-### Fase 5: Avaliação e endurecimento
+### Fase 5: Endurecimento (concluída em 2026-09-14)
 
-- Conjunto de avaliação com mensagens de desenvolvedores brasileiros: erros rotulados por categoria, frases corretas, mensagens com código e logs, mensagens em português.
-- Runner que usa o modo não interativo dos dois clientes (`claude -p` e `codex exec`) e mede precisão e recall por categoria, falsos positivos em código, aderência ao formato e silêncio quando não há erro.
-- Ajuste do texto do protocolo com base nas medições.
-- Revisão de privacidade, smoke test no Windows com Claude Code e Codex e medição de latência.
+Encerrada com a fatia de endurecimento entregue. A avaliação por modelo (conjunto, runner e ajuste do protocolo) e as medições que dependem de execução real (latência e smoke test no Windows) passaram para o início da Fase 6, porque consomem tokens de modelo real ou dependem de uma máquina Windows.
 
-Metas iniciais, recalibradas depois da primeira medição: nenhuma correção dentro de código, formato correto em 95% das respostas com correção e silêncio em 95% das mensagens sem erro.
+- Revisão de privacidade: guarda final de armazenamento em `src/core/privacy.ts` que rejeita segredos, código, logs, caminhos, URLs e prompts inteiros no limite de gravação, mesmo com a entrada de hook ou MCP ainda não confiável. `src/core/model.ts` e `src/core/store.ts` validam com zod os fragmentos, o `reason`, o `occurrence_id` e o metadata de cliente, e o `mistake_key` gravado tem de bater com os fragmentos.
+- Endurecimento do orçamento de contexto: teto de 350 token-equivalentes no início da sessão (4 bytes UTF-8 por token-equivalente), medido em bytes UTF-8 em vez de comprimento de string, com o briefing ajustado para caber sem cortar caracteres multibyte.
 
-Critério de saída: metas atingidas ou desvios documentados.
+Critério de saída: `npm run check` passa com a revisão de privacidade e o teto de orçamento cobertos por testes. Atingido. A medição das metas de avaliação fica na Fase 6.
 
 ### Fase 6: Depois do MVP
+
+Avaliação e medições, herdadas da Fase 5 e feitas primeiro:
+
+- Conjunto de avaliação com mensagens de desenvolvedores brasileiros: erros rotulados por categoria, frases corretas, mensagens com código e logs, mensagens em português.
+- Runner que usa o modo não interativo dos dois clientes (`claude -p` e `codex exec`) e mede precisão e recall por categoria, falsos positivos em código, aderência ao formato e silêncio quando não há erro. Mede o Codex separado por modelo, porque o `gpt-5.6-terra` fica abaixo do Claude Code (S6, `docs/compatibility.md`).
+- Ajuste do texto do protocolo com base nas medições, mirando aproximar a aderência do Codex (formato e gravação) do nível do Claude Code.
+- Medição de latência do hook síncrono (p95 abaixo de 300 ms) e smoke test no Windows com Claude Code e Codex.
+- Metas iniciais, recalibradas depois da primeira medição: nenhuma correção dentro de código, formato correto em 95% das respostas com correção e silêncio em 95% das mensagens sem erro.
+
+Resto do pós-MVP:
 
 - Quiz com repetição espaçada a partir dos erros reais.
 - Relatório semanal.
@@ -498,7 +506,7 @@ Critério de saída: metas atingidas ou desvios documentados.
 | MCP | client do SDK contra `dist/tutor.mjs` via stdio | todo commit |
 | Validador do cliente | `claude plugin validate` | local e em release |
 | Falhas | store corrompido, diretório sem permissão, Node ausente, payload desconhecido | todo commit |
-| Ponta a ponta | runner da Fase 5 | release e sob demanda, porque consome tokens |
+| Ponta a ponta | runner de avaliação (Fase 6) | release e sob demanda, porque consome tokens |
 
 ## 7. Riscos
 

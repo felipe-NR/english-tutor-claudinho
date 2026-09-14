@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSafeStoredIdentifier, isSafeStoredText } from "./privacy.ts";
 
 // The maximum length of a stored fragment. Anything longer is a paste, a code
 // block or a log line, not a short piece of prose to correct, so the store
@@ -32,7 +33,18 @@ export type CorrectionCategory = z.infer<typeof CorrectionCategory>;
 export const CorrectionSource = z.enum(["hook", "tool"]);
 export type CorrectionSource = z.infer<typeof CorrectionSource>;
 
-const fragment = z.string().trim().min(1).max(MAX_FRAGMENT_LENGTH);
+const unsafeTextMessage = "must be a short prose fragment without prompts, code, or secret-shaped values";
+const fragment = z.string().trim().min(1).max(MAX_FRAGMENT_LENGTH).refine(isSafeStoredText, unsafeTextMessage);
+const reason = z
+  .string()
+  .trim()
+  .max(MAX_FRAGMENT_LENGTH)
+  .refine((value) => value === "" || isSafeStoredText(value), unsafeTextMessage);
+const occurrenceId = z
+  .string()
+  .min(1)
+  .max(128)
+  .refine(isSafeStoredIdentifier, "must be an opaque identifier without secret-shaped values");
 
 // The input a caller supplies for one correction. `occurrence_id` is present
 // only when a hook reminder provided it; without it every call is a new
@@ -41,25 +53,28 @@ export const CorrectionInput = z.object({
   original: fragment,
   correction: fragment,
   category: CorrectionCategory,
-  reason: z.string().trim().max(MAX_FRAGMENT_LENGTH),
-  occurrence_id: z.string().min(1).max(128).optional(),
+  reason,
+  occurrence_id: occurrenceId.optional(),
 });
 export type CorrectionInput = z.infer<typeof CorrectionInput>;
 
 // One event in the append-only record. `mistake_key` groups statistics;
 // `occurrence_id` preserves each legitimate repetition (plan §4.9).
 export const CorrectionRecord = z.object({
-  id: z.string(),
-  occurrence_id: z.string().optional(),
+  id: z.uuid(),
+  occurrence_id: occurrenceId.optional(),
   mistake_key: z.string(),
-  ts: z.string(),
-  client: z.string(),
+  ts: z.iso.datetime(),
+  client: z.string().trim().min(1).max(64).refine(isSafeStoredIdentifier),
   category: CorrectionCategory,
-  original: z.string(),
-  correction: z.string(),
-  reason: z.string(),
+  original: fragment,
+  correction: fragment,
+  reason,
   source: CorrectionSource,
-});
+}).refine(
+  (record) => record.mistake_key === mistakeKey(record.category, record.original, record.correction),
+  "mistake key must match the stored fragments",
+);
 export type CorrectionRecord = z.infer<typeof CorrectionRecord>;
 
 // Short human focus phrases per category, used in the session briefing and the

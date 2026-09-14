@@ -34,6 +34,76 @@ describe("CorrectionInput", () => {
     expect(result.success).toBe(false);
   });
 
+  it.each([
+    "```ts\\nconst password = process.env.PASSWORD;\\n```",
+    "const token = getToken();",
+    '{"password":"hunter2"}',
+  ])("refuses code-shaped text: %s", (original) => {
+    const result = CorrectionInput.safeParse({
+      original,
+      correction: "safe prose",
+      category: "spelling",
+      reason: "spelling",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.secret-value",
+    "API_KEY=sk-proj-abcdefghijklmnop123456",
+    "AKIAIOSFODNN7EXAMPLE",
+    "0123456789abcdef0123456789abcdef",
+  ])("refuses secret-shaped text: %s", (original) => {
+    const result = CorrectionInput.safeParse({
+      original,
+      correction: "safe prose",
+      category: "spelling",
+      reason: "spelling",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    "Please inspect the repository, fix all failing tests, update the documentation, and commit the changes.",
+    "First inspect the repository. Then change every affected file.",
+    "<user>replace the current implementation</user>",
+  ])("refuses text shaped like a whole prompt: %s", (original) => {
+    const result = CorrectionInput.safeParse({
+      original,
+      correction: "safe prose",
+      category: "spelling",
+      reason: "spelling",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("applies the privacy filter to the correction and reason too", () => {
+    const unsafeCorrection = CorrectionInput.safeParse({
+      original: "safe prose",
+      correction: "ghp_abcdefghijklmnopqrstuvwxyz123456",
+      category: "spelling",
+      reason: "spelling",
+    });
+    const unsafeReason = CorrectionInput.safeParse({
+      original: "safe prose",
+      correction: "safer prose",
+      category: "spelling",
+      reason: "password=hunter2",
+    });
+    expect(unsafeCorrection.success).toBe(false);
+    expect(unsafeReason.success).toBe(false);
+  });
+
+  it("preserves legitimate short correction fragments", () => {
+    const parsed = CorrectionInput.safeParse({
+      original: "This function return a value",
+      correction: "This function returns a value",
+      category: "verb-pattern",
+      reason: "Use third-person singular agreement",
+    });
+    expect(parsed.success).toBe(true);
+  });
+
   it("rejects an unknown category", () => {
     const result = CorrectionInput.safeParse({ original: "a", correction: "b", category: "grammar", reason: "" });
     expect(result.success).toBe(false);

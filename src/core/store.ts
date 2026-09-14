@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { CorrectionInput, CorrectionRecord, type CorrectionSource, mistakeKey } from "./model.ts";
+import { z } from "zod";
+import { CorrectionInput, CorrectionRecord, CorrectionSource, mistakeKey } from "./model.ts";
+import { isSafeStoredIdentifier } from "./privacy.ts";
 import { renderReport } from "./report.ts";
 import { computeStats } from "./stats.ts";
 
@@ -25,6 +27,12 @@ export interface RecordResult {
   // merged instead of appended (plan §4.8).
   readonly recorded: boolean;
 }
+
+const RecordMetaInput = z.object({
+  client: z.string().trim().min(1).max(64).refine(isSafeStoredIdentifier),
+  source: CorrectionSource,
+  ts: z.iso.datetime().optional(),
+});
 
 // Read every correction event. A malformed line is skipped rather than failing
 // the whole read, so one bad append never hides the rest of the history.
@@ -60,6 +68,7 @@ export async function appendCorrection(
   meta: RecordMeta,
 ): Promise<RecordResult> {
   const input = CorrectionInput.parse(rawInput);
+  const validatedMeta = RecordMetaInput.parse(meta);
   return withLock(dir, async () => {
     const existing = await readCorrections(dir);
     const key = mistakeKey(input.category, input.original, input.correction);
@@ -76,13 +85,13 @@ export async function appendCorrection(
     const record = CorrectionRecord.parse({
       id: randomUUID(),
       mistake_key: key,
-      ts: meta.ts ?? new Date().toISOString(),
-      client: meta.client,
+      ts: validatedMeta.ts ?? new Date().toISOString(),
+      client: validatedMeta.client,
       category: input.category,
       original: input.original,
       correction: input.correction,
       reason: input.reason,
-      source: meta.source,
+      source: validatedMeta.source,
       ...(input.occurrence_id !== undefined ? { occurrence_id: input.occurrence_id } : {}),
     });
 

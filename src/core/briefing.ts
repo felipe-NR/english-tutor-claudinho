@@ -1,5 +1,6 @@
 import { CATEGORY_FOCUS, type CorrectionCategory } from "./model.ts";
 import type { CorrectionRecord } from "./model.ts";
+import { SESSION_BRIEFING_UTF8_BYTE_BUDGET } from "./protocol.ts";
 import { computeStats, type PatternStat } from "./stats.ts";
 
 const DEFAULT_LIMIT = 3;
@@ -66,13 +67,50 @@ function renderBriefing(
   if (total === 0) {
     return "[english-tutor] No recorded mistakes yet. Corrections start once you write.";
   }
-  const lines = [`[english-tutor] ${String(total)} mistakes recorded, ${String(last7Days)} in the last 7 days (${trend}).`];
+  const header = `[english-tutor] ${String(total)} mistakes recorded, ${String(last7Days)} in the last 7 days (${trend}).`;
+  const focusText = focusLine(focus);
+  const lines = [header];
   if (topPatterns.length > 0) {
     lines.push("Top patterns:");
     for (const pattern of topPatterns) {
-      lines.push(`- [${pattern.category}] ${pattern.original} → ${pattern.correction} (${String(pattern.count)}x)`);
+      const line = `- [${pattern.category}] ${pattern.original} → ${pattern.correction} (${String(pattern.count)}x)`;
+      const withoutPattern = [...lines, focusText].join("\n");
+      const availableBytes = SESSION_BRIEFING_UTF8_BYTE_BUDGET - Buffer.byteLength(withoutPattern, "utf8") - 1;
+      if (availableBytes <= 0) {
+        break;
+      }
+      const fitted = fitUtf8(line, availableBytes);
+      if (fitted.length === 0) {
+        break;
+      }
+      lines.push(fitted);
+      if (fitted !== line) {
+        break;
+      }
     }
   }
-  lines.push(focusLine(focus));
-  return lines.join("\n");
+  lines.push(focusText);
+  return fitUtf8(lines.join("\n"), SESSION_BRIEFING_UTF8_BYTE_BUDGET);
+}
+
+function fitUtf8(text: string, maxBytes: number): string {
+  if (Buffer.byteLength(text, "utf8") <= maxBytes) {
+    return text;
+  }
+  const ellipsis = "…";
+  const ellipsisBytes = Buffer.byteLength(ellipsis, "utf8");
+  if (maxBytes < ellipsisBytes) {
+    return "";
+  }
+  let fitted = "";
+  let fittedBytes = ellipsisBytes;
+  for (const character of text) {
+    const characterBytes = Buffer.byteLength(character, "utf8");
+    if (fittedBytes + characterBytes > maxBytes) {
+      break;
+    }
+    fitted += character;
+    fittedBytes += characterBytes;
+  }
+  return `${fitted.trimEnd()}${ellipsis}`;
 }
