@@ -27366,6 +27366,29 @@ function delay(ms) {
   });
 }
 
+// src/hooks/output.ts
+function formatHookOutput(client, event, context) {
+  if (client !== "codex" || context === "") {
+    return context;
+  }
+  const hookEventName = codexContextEventName(event);
+  if (hookEventName === void 0) {
+    return context;
+  }
+  return `${JSON.stringify({ hookSpecificOutput: { hookEventName, additionalContext: context } })}
+`;
+}
+function codexContextEventName(event) {
+  switch (event) {
+    case "session-start":
+      return "SessionStart";
+    case "user-prompt-submit":
+      return "UserPromptSubmit";
+    case "stop":
+      return void 0;
+  }
+}
+
 // src/hooks/runner.ts
 import { appendFile as appendFile2, mkdir as mkdir3 } from "node:fs/promises";
 import { join as join5 } from "node:path";
@@ -37518,7 +37541,8 @@ async function hook(args) {
     return { handled: true, exitCode: 0, stdout: "", stderr: "" };
   }
   const payload = await readStream(process.stdin).catch(() => "");
-  const stdout = await runHook(client.data, event.data, payload, dir);
+  const context = await runHook(client.data, event.data, payload, dir);
+  const stdout = formatHookOutput(client.data, event.data, context);
   return { handled: true, exitCode: 0, stdout, stderr: "" };
 }
 function safeStoreDir() {

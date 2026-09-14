@@ -1,6 +1,6 @@
 # Client compatibility
 
-Verified on 2026-09-13 with the Phase 1 spikes, on Linux 7.0 and Node.js 24.14.1. Codex was first tested on 0.153.4 and rechecked on 0.154.0. Every client ran in an isolated profile (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`). The 0.154.0 recheck used a local Responses-compatible HTTP server with fixed responses, so it called no real model and used no credentials. The probe package, marketplace builder, recorded Codex result and concurrency experiment live in [`spikes/`](../spikes/), and the recorded payloads live in [`test/contract/fixtures/`](../test/contract/fixtures/).
+Verified through 2026-09-14 with the Phase 1 spikes and an installed-package wiring audit, on Linux 7.0 and Node.js 24.14.1. Codex was first tested on 0.153.4 and rechecked on 0.154.0. Every client ran in an isolated profile (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`). The 0.154.0 recheck used a local Responses-compatible HTTP server with fixed responses, so it called no real model and used no credentials. The probe package, marketplace builder, recorded Codex result and concurrency experiment live in [`spikes/`](../spikes/), and the recorded payloads live in [`test/contract/fixtures/`](../test/contract/fixtures/).
 
 ## Summary
 
@@ -9,17 +9,17 @@ Verified on 2026-09-13 with the Phase 1 spikes, on Linux 7.0 and Node.js 24.14.1
 | Installs the canonical Agent Plugins package | yes, from `.claude-plugin/marketplace.json` with `strict: false` | yes, from `.agents/plugins/marketplace.json` |
 | Root Agent Plugins `plugin.json` conflicts with the client format | no | no |
 | Skills from `skills/` | yes | yes, shown to the model as `plugin:skill` |
-| MCP server source | marketplace entry; `mcp.json` is ignored | `mcp.json`, with `${PLUGIN_ROOT}` expanded |
+| MCP server source | marketplace entry; `mcp.json` is ignored | legacy `.mcp.json`; relative `cwd` resolves from the installed plugin root, but `${PLUGIN_ROOT}` in `args` stays literal |
 | MCP `instructions` reach the model | yes | `gpt-5.4`: yes, in `tool_search` metadata; `gpt-6-astra`: absent from the first recorded request |
 | Hooks from the canonical package | yes, declared inline in the marketplace entry | **no**: hooks are never loaded for Agent Plugins packages |
 | Hooks from a legacy `.codex-plugin/plugin.json` package | not applicable | yes, from `hooks/hooks.json` |
-| `SessionStart` and `UserPromptSubmit` stdout reaches the model | yes | yes, as developer messages |
+| `SessionStart` and `UserPromptSubmit` stdout reaches the model | yes | yes; use event-specific `hookSpecificOutput.additionalContext` JSON because 0.154.0 parses a leading `[` as JSON |
 | `Stop` payload carries `last_assistant_message` | yes | yes |
 | Hook trust | no extra step after install | required; `codex exec` skips untrusted hooks without a warning |
 | Hooks and MCP servers write the per-user store | yes, also with the sandbox enabled | yes, also with `-s read-only` |
 | Mode with the canonical package | **Completo** | **Padrão** |
 | Mode with the generated legacy package (decision D12) | not applicable | **Completo** |
-| Correction-protocol adherence, real-model live run (S5) | strong: 3 of 3 caught, correct format, recorded | weak: 1 of 3 caught, wrong format, not recorded |
+| Correction-protocol adherence, real-model live run (S5) | strong: 3 of 3 caught, correct format, recorded | inconclusive: the installed hook and MCP wiring failed during the run |
 
 ## S1: Claude Code
 
@@ -76,7 +76,15 @@ Codex (0.154.0, `gpt-5.6-terra`, `codex exec --dangerously-bypass-hook-trust --s
 - Caught one of the three errors ("explain me" to "explain ... to me"). It missed the `doubt-question` false friend and the `tense-aspect` error.
 - Wrote a single loose "Small English note" at the bottom of the reply instead of the `✏️ [category]` lines at the top.
 - Did not call `record_corrections`; nothing was written to the store.
-- The tutor hooks fired (their stdout reaches the model as developer messages, per S2) and the `english-tutor` MCP tools were exposed, so the protocol and the recording tool were both available. The gap is model adherence, not wiring, and it fits the S3 finding that MCP `instructions` reach Codex models inconsistently.
+- The tutor skill was available, but the installed hooks and MCP server were not. The correction therefore does not isolate adherence to the hook protocol, and the missing record cannot be attributed to model behavior. The 2026-09-14 audit below supersedes the earlier wiring conclusion.
+
+## S6: Installed Codex wiring audit
+
+Codex 0.154.0 reproduced both startup failures from the installed release package.
+
+- The `ai-memory` `SessionStart` and `UserPromptSubmit` hooks exited 0 with empty stdout and stderr. The tutor hooks exited 0 with non-empty text beginning `[english-tutor]`. Controlled hooks showed that alphabetic plain text succeeds while a leading `[` is parsed as JSON and rejected. The event-specific [SessionStart](https://github.com/openai/codex/blob/main/codex-rs/hooks/schema/generated/session-start.command.output.schema.json) and [UserPromptSubmit](https://github.com/openai/codex/blob/main/codex-rs/hooks/schema/generated/user-prompt-submit.command.output.schema.json) JSON envelopes both succeeded.
+- Codex listed `english-tutor` before startup, but `initialize` never completed. Process tracing showed `node` receiving the literal argument `${PLUGIN_ROOT}/dist/tutor.mjs`. The legacy MCP loader roots a relative `cwd` at the installed plugin directory, so `command: "node"`, `args: ["dist/tutor.mjs", "mcp"]`, and `cwd: "."` avoid unsupported placeholder expansion. The corrected launcher completed `get_briefing` calls on Codex 0.153.4 and 0.154.0 in isolated installed-plugin profiles.
+- S5 must be rerun after installing the corrected package. Its recorded Claude result remains valid; its Codex result remains useful only as evidence of the broken release wiring.
 
 `codex exec` printed interleaved `hook: ... Failed` lines, but ai-memory and computer-use also register hooks at those events and the tutor hooks exit 0 with correct output when run standalone, so the failures are not attributable to the tutor without a targeted single-plugin trace.
 

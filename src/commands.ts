@@ -4,6 +4,7 @@ import { type Preferences, readPreferences, PreferencesUpdate, updatePreferences
 import { resolveReferencesDir, resolveStoreDir } from "./core/paths.ts";
 import { renderReport, ReportPeriod } from "./core/report.ts";
 import { purgeCorrections, readCorrections } from "./core/store.ts";
+import { formatHookOutput } from "./hooks/output.ts";
 import { runHook } from "./hooks/runner.ts";
 import { ClientId, HookEvent } from "./hooks/types.ts";
 import { startStdioServer } from "./mcp/stdio.ts";
@@ -54,7 +55,8 @@ async function hook(args: readonly string[]): Promise<CommandOutcome> {
     return { handled: true, exitCode: 0, stdout: "", stderr: "" };
   }
   const payload = await readStream(process.stdin).catch(() => "");
-  const stdout = await runHook(client.data, event.data, payload, dir);
+  const context = await runHook(client.data, event.data, payload, dir);
+  const stdout = formatHookOutput(client.data, event.data, context);
   return { handled: true, exitCode: 0, stdout, stderr: "" };
 }
 

@@ -4,9 +4,10 @@
       "type": "stdio",
       "command": "node",
       "args": [
-        "${PLUGIN_ROOT}/dist/tutor.mjs",
+        "dist/tutor.mjs",
         "mcp"
-      ]
+      ],
+      "cwd": "."
     }
   }
 }

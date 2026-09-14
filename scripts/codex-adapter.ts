@@ -39,7 +39,7 @@ export async function generateCodexAdapter(dest: string): Promise<void> {
 
   await writeFileIn(dest, ".mcp.json", stableJson({
     mcpServers: {
-      "english-tutor": { type: "stdio", command: "node", args: ["${PLUGIN_ROOT}/dist/tutor.mjs", "mcp"] },
+      "english-tutor": { type: "stdio", command: "node", args: ["dist/tutor.mjs", "mcp"], cwd: "." },
     },
   }));
 
