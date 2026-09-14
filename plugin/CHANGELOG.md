@@ -2,6 +2,18 @@
 
 All notable changes to this plugin are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-09-14
+
+### Added
+
+- Storage privacy guard (`src/core/privacy.ts`): before any correction is written, it rejects fragments that carry secrets, code, logs, file paths, URLs or whole-prompt-shaped text, at the boundary where hook and MCP input is still untrusted.
+- zod validation of every stored value: the fragments, the reason, the occurrence id and the client metadata, with the recorded `mistake_key` required to match its fragments.
+- A 350 token-equivalent budget for the session-start context, measured in UTF-8 bytes, fitting the briefing without splitting multi-byte characters.
+
+### Fixed
+
+- Codex hook and MCP wiring: the legacy launcher roots a relative `cwd` at the installed plugin directory instead of relying on unsupported placeholder expansion, so the MCP server initializes, and the hooks emit the event-specific JSON envelope Codex expects instead of plain text beginning with `[`.
+
 ## [0.1.0] - 2026-09-13
 
 ### Added

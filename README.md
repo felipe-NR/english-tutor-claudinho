@@ -28,7 +28,7 @@ Codex loads the skill and the MCP server from this package but ignores its hooks
 
 ## Status
 
-Phases 0 (foundation), 1 (client verification), 2 (portable core), 3 (trigger adapters) and 4 (packaging and distribution) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. This is release `0.1.0`.
+Phases 0 (foundation), 1 (client verification), 2 (portable core), 3 (trigger adapters), 4 (packaging and distribution) and 5 (hardening) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. This is release `0.2.0`.
 
 ## Design
 
@@ -51,7 +51,7 @@ npm run build   # rebuild plugin/dist/tutor.mjs and adapters/codex/ after changi
 
 ## Em português
 
-O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. Instale com dois comandos por cliente (veja **Install** acima): no Claude Code, `claude plugin marketplace add felipe-NR/english-tutor-claudinho` e depois `claude plugin install english-tutor-claudinho@english-tutor-claudinho`; no Codex, os mesmos passos com `codex`. Esta é a versão `0.1.0`. O [plano de implementação](docs/implementation-plan.md) está em português.
+O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. Instale com dois comandos por cliente (veja **Install** acima): no Claude Code, `claude plugin marketplace add felipe-NR/english-tutor-claudinho` e depois `claude plugin install english-tutor-claudinho@english-tutor-claudinho`; no Codex, os mesmos passos com `codex`. Esta é a versão `0.2.0`. O [plano de implementação](docs/implementation-plan.md) está em português.
 
 ## License
 
