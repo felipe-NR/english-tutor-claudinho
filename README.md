@@ -26,6 +26,24 @@ codex plugin add english-tutor-claudinho@english-tutor-claudinho
 
 Codex loads the skill and the MCP server from this package but ignores its hooks, so the message trigger ships as a legacy package under `adapters/codex/` that the same marketplace installs. Codex asks you to trust the plugin's hooks on install; approve it, or the tutor stays silent. In non-interactive `codex exec` runs, hooks are skipped unless you pass `--dangerously-bypass-hook-trust`. See [docs/compatibility.md](docs/compatibility.md) for the client behavior this relies on.
 
+### Update
+
+Installs stay pinned to the version they were fetched at; they do not auto-update. To move an existing install to the latest release, refresh the marketplace, then update the plugin. Your stored correction history and preferences live in the per-OS-user data store, outside the package, so an update leaves them untouched.
+
+Claude Code (restart to apply):
+
+```sh
+claude plugin marketplace update english-tutor-claudinho
+claude plugin update english-tutor-claudinho
+```
+
+Codex:
+
+```sh
+codex plugin marketplace update english-tutor-claudinho
+codex plugin add english-tutor-claudinho@english-tutor-claudinho
+```
+
 ## Status
 
 Phases 0 (foundation), 1 (client verification), 2 (portable core), 3 (trigger adapters), 4 (packaging and distribution) and 5 (hardening) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. This is release `0.2.0`.
