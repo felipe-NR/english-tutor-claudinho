@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>english-tutor-claudinho · architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #eb6c36;
+      --font-sans:  'Geist', system-ui, sans-serif;
+      --font-serif: 'Instrument Serif', 'Noto Serif', serif;
+      --font-mono:  'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      padding: 3rem 2rem;
+      display: flex; justify-content: center;
+    }
+    .frame { max-width: 1040px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem; font-weight: 500;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--color-muted); margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.6rem, 2.4vw + 0.75rem, 2.1rem);
+      font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+      margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 900px; display: block; }
+    .cards {
+      display: grid; grid-template-columns: 1.15fr 0.85fr;
+      gap: 1rem; margin-top: 1.75rem;
+    }
+    @media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+    .card {
+      background: #ffffff;
+      border: 1px solid rgba(45,49,66,0.12);
+      border-radius: 6px; padding: 1.25rem;
+    }
+    .card .eyebrow { margin-bottom: 0.75rem; }
+    .card-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot.coral { background: var(--color-accent); }
+    .dot.muted { background: var(--color-muted); }
+    .card h3 { font-size: 0.95rem; font-weight: 600; }
+    .cats { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .cat {
+      font-family: var(--font-mono); font-size: 0.68rem;
+      padding: 0.2rem 0.45rem; border: 1px solid rgba(45,49,66,0.18);
+      border-radius: 4px; color: var(--color-muted);
+    }
+    .kv { font-size: 0.82rem; line-height: 1.6; color: var(--color-muted); }
+    .kv b { color: var(--color-ink); font-weight: 600; }
+    .kv code, .path {
+      font-family: var(--font-mono); font-size: 0.74rem;
+      color: var(--color-ink);
+    }
+    .kv ul { list-style: none; margin-top: 0.4rem; }
+    .kv li { padding-left: 0.9rem; position: relative; }
+    .kv li::before { content: "–"; position: absolute; left: 0; color: var(--color-accent); }
+    footer {
+      margin-top: 1.75rem; padding-top: 0.75rem;
+      border-top: 1px solid rgba(45,49,66,0.12);
+      font-family: var(--font-mono); font-size: 0.66rem;
+      letter-spacing: 0.08em; color: var(--color-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Architecture · Data flow</p>
+    <h1>english-tutor-claudinho — where corrections are stored</h1>
+
+    <svg viewBox="0 0 1000 816" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="tutor-arch-en-title tutor-arch-en-desc">
+      <title id="tutor-arch-en-title">Architecture of english-tutor-claudinho</title>
+      <desc id="tutor-arch-en-desc">The coding agent applies the correction protocol; hooks and the MCP server write each mistake to corrections.jsonl in the per-OS-user store, from which stats.json and the Markdown report are derived and the session briefing returns to the agent.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+      <!-- STORE zone -->
+      <rect x="144" y="452" width="724" height="312" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.12)" stroke-width="0.8" stroke-dasharray="5,4"/>
+      <rect x="312" y="456" width="388" height="14" rx="2" fill="#f5f5f5"/>
+      <text x="506" y="466" fill="rgba(45,49,66,0.55)" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">STORE · ~/.english-tutor-claudinho · ONE PER OS USER</text>
+
+      <!-- ============ ARROWS ============ -->
+
+      <!-- A1 Skill -> Agent -->
+      <line x1="500" y1="136" x2="500" y2="190" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <rect x="508" y="155" width="66" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="512" y="165" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">PROTOCOL</text>
+
+      <!-- A2 Agent -> Hooks -->
+      <path d="M372,214 H216 Q208,214 208,222 V332" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <rect x="256" y="194" width="66" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="289" y="204" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">✏️ LINES</text>
+
+      <!-- A3 Hooks -> Agent (dashed return) -->
+      <path d="M234,332 V246 Q234,238 242,238 H372" fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="270" y="218" width="70" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="305" y="228" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">BRIEFING</text>
+
+      <!-- A4 Agent -> MCP -->
+      <path d="M628,214 H784 Q792,214 792,222 V332" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <rect x="678" y="194" width="64" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="710" y="204" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">RECORD</text>
+
+      <!-- A5 Hooks -> corrections.jsonl -->
+      <path d="M208,416 V512 Q208,520 216,520 H372" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <rect x="258" y="500" width="64" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="290" y="510" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">APPEND</text>
+
+      <!-- A6 MCP -> corrections.jsonl -->
+      <path d="M792,416 V512 Q792,520 784,520 H628" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <rect x="678" y="500" width="64" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="710" y="510" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">APPEND</text>
+
+      <!-- A9 corrections.jsonl -> Hooks (dashed read) -->
+      <path d="M372,560 H56 Q48,560 48,552 V382 Q48,374 56,374 H88" fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="96" y="540" width="52" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="122" y="550" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">READ</text>
+
+      <!-- A7 corrections.jsonl -> stats.json (dashed) -->
+      <path d="M452,600 V624 Q452,632 444,632 H298 Q290,632 290,640 V660" fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="341" y="612" width="62" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="372" y="622" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DERIVE</text>
+
+      <!-- A8 corrections.jsonl -> log.md (dashed) -->
+      <path d="M548,600 V624 Q548,632 556,632 H706 Q714,632 714,640 V660" fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="600" y="612" width="62" height="13" rx="2" fill="#f5f5f5"/>
+      <text x="631" y="622" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DERIVE</text>
+
+      <!-- ============ NODES ============ -->
+
+      <!-- N3 Skill -->
+      <rect x="372" y="64" width="256" height="72" rx="6" fill="#f5f5f5"/>
+      <rect x="372" y="64" width="256" height="72" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="384" y="72" width="34" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.4)" stroke-width="0.8"/>
+      <text x="401" y="81" fill="rgba(45,49,66,0.8)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SKILL</text>
+      <text x="500" y="102" fill="#2d3142" font-size="13" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Correction protocol</text>
+      <text x="500" y="120" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">pt-BR profile · 16 categories</text>
+
+      <!-- N1 Agent -->
+      <rect x="372" y="188" width="256" height="76" rx="6" fill="#f5f5f5"/>
+      <rect x="372" y="188" width="256" height="76" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+      <rect x="384" y="196" width="44" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.4)" stroke-width="0.8"/>
+      <text x="406" y="205" fill="rgba(45,49,66,0.8)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CLIENT</text>
+      <text x="500" y="228" fill="#2d3142" font-size="13" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Coding agent</text>
+      <text x="500" y="246" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Claude Code · Codex</text>
+
+      <!-- N2 Hooks -->
+      <rect x="88" y="332" width="240" height="84" rx="6" fill="#f5f5f5"/>
+      <rect x="88" y="332" width="240" height="84" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="100" y="340" width="34" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.4)" stroke-width="0.8"/>
+      <text x="117" y="349" fill="rgba(45,49,66,0.8)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">HOOK</text>
+      <text x="208" y="374" fill="#2d3142" font-size="12.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Hooks (trigger adapter)</text>
+      <text x="208" y="391" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">session-start · prompt · stop</text>
+      <text x="208" y="405" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">dist/tutor.mjs hook</text>
+
+      <!-- N4 MCP -->
+      <rect x="672" y="332" width="240" height="84" rx="6" fill="#f5f5f5"/>
+      <rect x="672" y="332" width="240" height="84" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="684" y="340" width="30" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.4)" stroke-width="0.8"/>
+      <text x="699" y="349" fill="rgba(45,49,66,0.8)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">MCP</text>
+      <text x="792" y="374" fill="#2d3142" font-size="13" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">MCP server</text>
+      <text x="792" y="391" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">record_corrections</text>
+      <text x="792" y="405" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">report · briefing · purge</text>
+
+      <!-- N6 corrections.jsonl (FOCAL) -->
+      <rect x="372" y="484" width="256" height="116" rx="6" fill="#f5f5f5"/>
+      <rect x="372" y="484" width="256" height="116" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.4"/>
+      <rect x="384" y="492" width="36" height="12" rx="2" fill="transparent" stroke="rgba(235,108,54,0.6)" stroke-width="0.8"/>
+      <text x="402" y="501" fill="#c9542a" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">STORE</text>
+      <text x="500" y="524" fill="#2d3142" font-size="13.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">corrections.jsonl</text>
+      <text x="500" y="542" fill="#c9542a" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">source of truth · append-only</text>
+      <line x1="404" y1="554" x2="596" y2="554" stroke="rgba(235,108,54,0.25)" stroke-width="0.8"/>
+      <text x="500" y="570" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">category · original→correction</text>
+      <text x="500" y="583" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">mistake_key · occurrence_id</text>
+      <text x="500" y="596" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">ts · client · source</text>
+
+      <!-- N7 stats.json -->
+      <rect x="176" y="660" width="228" height="80" rx="6" fill="#f5f5f5"/>
+      <rect x="176" y="660" width="228" height="80" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <rect x="188" y="668" width="52" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.4)" stroke-width="0.8"/>
+      <text x="214" y="677" fill="rgba(45,49,66,0.8)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DERIVED</text>
+      <text x="290" y="702" fill="#2d3142" font-size="12.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">stats.json</text>
+      <text x="290" y="720" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">counts by category</text>
+
+      <!-- N8 english-practice-log.md -->
+      <rect x="596" y="660" width="236" height="80" rx="6" fill="#f5f5f5"/>
+      <rect x="596" y="660" width="236" height="80" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <rect x="608" y="668" width="52" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.4)" stroke-width="0.8"/>
+      <text x="634" y="677" fill="rgba(45,49,66,0.8)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DERIVED</text>
+      <text x="714" y="702" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">english-practice-log.md</text>
+      <text x="714" y="720" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">Markdown report</text>
+
+      <!-- ============ LEGEND ============ -->
+      <line x1="30" y1="784" x2="970" y2="784" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="30" y="800" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+      <line x1="120" y1="797" x2="150" y2="797" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <text x="158" y="800" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">flow / write</text>
+      <line x1="300" y1="797" x2="330" y2="797" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <text x="338" y="800" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">read / derive / return</text>
+      <rect x="540" y="791" width="12" height="12" rx="3" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+      <text x="560" y="800" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">focus: source of truth</text>
+    </svg>
+
+    <div class="cards">
+      <div class="card">
+        <p class="eyebrow">Pedagogy</p>
+        <div class="card-head"><span class="dot muted"></span><h3>16 error categories (pt-BR profile)</h3></div>
+        <div class="cats">
+          <span class="cat">false-friend</span><span class="cat">doubt-question</span><span class="cat">preposition</span><span class="cat">missing-subject</span><span class="cat">there-be</span><span class="cat">uncountable-plural</span><span class="cat">article</span><span class="cat">adjective-order</span><span class="cat">verb-pattern</span><span class="cat">tense-aspect</span><span class="cat">question-form</span><span class="cat">double-negative</span><span class="cat">pronoun-gender</span><span class="cat">capitalization</span><span class="cat">spelling</span><span class="cat">code-switching</span>
+        </div>
+      </div>
+      <div class="card">
+        <p class="eyebrow">Storage</p>
+        <div class="card-head"><span class="dot coral"></span><h3>What is stored, and where</h3></div>
+        <div class="kv">
+          <b>Location:</b> <span class="path">~/.english-tutor-claudinho/</span><br>
+          fallback <span class="path">$PLUGIN_DATA</span> · override <span class="path">ENGLISH_TUTOR_DATA</span>
+          <ul>
+            <li>Stores only the wrong fragment and its correction (≤ 160 chars)</li>
+            <li>Never prompts, code, secrets · no network, no telemetry</li>
+            <li><b>source:</b> <code>hook</code> (captured at stop) or <code>tool</code> (MCP)</li>
+            <li>Also: <code>logs/hooks.log</code> · lock <code>.lock</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <footer>english-tutor-claudinho · Agent Plugins 1.0.0 · diagram generated with diagram-design</footer>
+  </div>
+</body>
+</html>

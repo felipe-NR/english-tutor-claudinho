@@ -154,6 +154,12 @@ sequenceDiagram
 
 ## 4. Arquitetura proposta
 
+O diagrama abaixo resume o fluxo: o agente aplica o protocolo de correção e alimenta os dois caminhos de captura (o hook `stop` e o servidor MCP), que gravam cada erro em `corrections.jsonl` na pasta por usuário do sistema. Desse arquivo, a fonte da verdade, derivam `stats.json` e o relatório em Markdown; no retorno, os hooks leem o histórico para montar o briefing da sessão.
+
+![Arquitetura do english-tutor-claudinho: o agente de código alimenta hooks e servidor MCP, que gravam em corrections.jsonl na pasta por usuário do sistema, de onde stats.json e o relatório em Markdown são derivados.](diagrams/english-tutor-arquitetura.png)
+
+Fonte editável do diagrama: [`diagrams/english-tutor-arquitetura.html`](diagrams/english-tutor-arquitetura.html) (e `.svg`). As seções [4.7](#47-hooks-por-cliente), [4.8](#48-captura-das-correções) e [4.9](#49-armazenamento-e-privacidade) detalham cada parte.
+
 ### 4.1 Layout do repositório
 
 ```text

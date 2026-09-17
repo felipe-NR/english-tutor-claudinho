@@ -53,7 +53,9 @@ Phases 0 (foundation), 1 (client verification), 2 (portable core), 3 (trigger ad
 - `plugin/` is the portable Agent Plugins package: a skill, an MCP server and the bundled `tutor` CLI.
 - Per-client hooks trigger the tutor on every message where the client supports it.
 
-[ADR-0001](docs/adr/0001-tutor-layers.md) explains the split.
+![Architecture of english-tutor-claudinho: the coding agent feeds hooks and the MCP server, which write each mistake to corrections.jsonl in the per-OS-user store, from which stats.json and the Markdown report are derived and the session briefing returns to the agent.](docs/diagrams/english-tutor-architecture-en.png)
+
+[ADR-0001](docs/adr/0001-tutor-layers.md) explains the split. The diagram source is [`docs/diagrams/english-tutor-architecture-en.html`](docs/diagrams/english-tutor-architecture-en.html) (and `.svg`); a pt-BR version lives in the [implementation plan](docs/implementation-plan.md#4-arquitetura-proposta).
 
 ## Development
 
