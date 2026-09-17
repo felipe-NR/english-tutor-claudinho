@@ -6,7 +6,8 @@ const MARKER_TTL_MS = 60 * 60 * 1000;
 
 // Claim a one-time marker. Returns true the first time a key is seen and false
 // afterwards, so a turn that fires two hook declarations emits the reminder
-// once (plan §4.3). The exclusive-create write makes the claim atomic.
+// once (docs/architecture.md, "CLI and hook rules"). The exclusive-create write
+// makes the claim atomic.
 export async function claimOnce(dir: string, key: string): Promise<boolean> {
   const stateDir = join(dir, STATE_DIR);
   await mkdir(stateDir, { recursive: true });

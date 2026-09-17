@@ -17,7 +17,8 @@ const parsers: Record<ClientId, (event: HookEvent, raw: JsonValue) => HookInput 
 };
 
 // Run one hook event and return the client's stdout. A hook never breaks a
-// session: any internal error is logged and turns into empty output (plan §4.3).
+// session: any internal error is logged and turns into empty output
+// (docs/architecture.md, "CLI and hook rules").
 export async function runHook(
   client: ClientId,
   event: HookEvent,
@@ -57,7 +58,8 @@ export async function runHook(
 
 async function sessionStart(input: HookInput, storeDir: string, briefingOn: boolean, now: Date): Promise<string> {
   // Claude Code replays SessionStart on resume; the protocol is already in that
-  // transcript, so re-injecting it would only cost tokens (plan §4.7).
+  // transcript, so re-injecting it would only cost tokens (docs/architecture.md,
+  // "Correction protocol").
   if (input.source === "resume") {
     return "";
   }

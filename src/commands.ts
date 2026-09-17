@@ -43,7 +43,8 @@ export async function dispatch(argv: readonly string[]): Promise<CommandOutcome>
 
 // A hook translates one client event. It must never break a session: an
 // unknown client or event, an unreachable store or any internal error all end
-// as exit 0 with the client's empty output (plan §4.3).
+// as exit 0 with the client's empty output (docs/architecture.md,
+// "CLI and hook rules").
 async function hook(args: readonly string[]): Promise<CommandOutcome> {
   const client = ClientId.safeParse(args[0]);
   const event = HookEvent.safeParse(args[1]);

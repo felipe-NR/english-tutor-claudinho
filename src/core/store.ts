@@ -24,7 +24,7 @@ export interface RecordMeta {
 export interface RecordResult {
   readonly record: CorrectionRecord;
   // false when the same occurrence already held this mistake and the call was
-  // merged instead of appended (plan §4.8).
+  // merged instead of appended (docs/architecture.md, "Capture").
   readonly recorded: boolean;
 }
 
@@ -101,8 +101,9 @@ export async function appendCorrection(
   });
 }
 
-// Regenerate the reconstructible derivatives (plan §4.9). They are best effort:
-// a failure here must not lose the append that just succeeded.
+// Regenerate the reconstructible derivatives (docs/architecture.md, "Storage and
+// privacy"). They are best effort: a failure here must not lose the append that
+// just succeeded.
 async function writeDerivatives(dir: string, records: readonly CorrectionRecord[]): Promise<void> {
   try {
     await writeFile(join(dir, STATS_FILE), `${JSON.stringify(computeStats(records), null, 2)}\n`, "utf8");

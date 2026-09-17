@@ -2,14 +2,59 @@
 
 ## Project
 
-english-tutor-claudinho is an Agent Plugins 1.0.0 plugin that corrects the English in the user's messages inside coding agents and tracks recurring mistakes. It is tuned for Brazilian Portuguese speakers.
-
-`docs/implementation-plan.md` holds the architecture, the phases and the settled decisions (section 8). It is written in pt-BR for the owner's review. Changing a settled decision needs the repository owner's approval.
+english-tutor-claudinho is an Agent Plugins 1.0.0 plugin that adds to coding agents the ability to also act as an English tutor, without removing any of their abilities. It analyzes the prose in the user's messages, corrects its English and tracks recurring mistakes. It is tuned for Brazilian Portuguese speakers. `docs/product.md` holds the full product description.
 
 ## Scope
 
 - MVP clients: Claude Code and Codex. Copilot CLI, VS Code, Antigravity CLI, Cursor and Kiro come after the MVP, each after its own spike.
 - Native-language profile: Brazilian Portuguese (pt-BR).
+
+## Documentation routing
+
+`AGENTS.md` is always the first document. After it, read only the sources the task needs; the list below is not a reading order.
+
+### Source of truth per domain
+
+|domain|source of truth|
+|-|-|
+|Product: what the plugin adds to the coding agent, for whom, plug-and-play contract, scope|`docs/product.md`|
+|Current architecture: layers, modes, CLI, hooks, capture, storage, preferences, context budget, tests|`docs/architecture.md`|
+|Correction protocol text and pt-BR mistake categories|`plugin/skills/english-tutor/references/`|
+|Decisions: reason, status and supersession|`docs/adr/README.md` and the record it links|
+|Verified client behavior|`docs/compatibility.md`|
+|Risks and mitigations|`docs/risks.md`|
+|Active work: assumed items, state, missing evidence|`docs/tasks.md`|
+|Possibilities after the MVP not yet assumed|`docs/backlog.md`|
+|Initial plan and Phases 0 to 5, as recorded|`docs/implementation-plan.md` (pt-BR)|
+|Released changes|`plugin/CHANGELOG.md`|
+
+### Disambiguation
+
+`docs/implementation-plan.md` records what was planned and done through Phase 5. It is not a source of current status, architecture or decision status, even where its sections still read as current.
+
+### Consolidation rule
+
+- Each fact lives in one document. Others link to it.
+- `README.md` and the Project section above summarize `docs/product.md`.
+- `docs/implementation-plan.md` is history and is frozen: its content is never rewritten, and nothing more is appended.
+- A divergence between a current document and the code, or between two current documents, is a consolidation defect: report it and ask before choosing a side.
+- Changing an accepted decision needs the repository owner's approval.
+
+### Reading routing
+
+- Product, positioning or scope: `docs/product.md`.
+- Change in `src/` or `plugin/`: the section of `docs/architecture.md` it touches, and the skill references for protocol or category text.
+- Client behavior claim: `docs/compatibility.md`, where new evidence is also recorded.
+- Why a decision exists, or whether it still holds: `docs/adr/README.md` and the linked record.
+- Status, pending work or release readiness: `docs/tasks.md`, read in full.
+- Origin or evidence of a completed phase: only the matching section of `docs/implementation-plan.md`.
+- Priorities after the MVP: `docs/backlog.md`. Its items become active work only when moved to `docs/tasks.md`.
+
+### Status and history
+
+- `docs/tasks.md` holds only active work, its state and the evidence it still needs. Do not report that nothing is pending while evidence is incomplete.
+- When an item closes, its evidence leaves `docs/tasks.md`: work after the MVP goes to `docs/history.md`, created at the first closure, and releases go to `plugin/CHANGELOG.md`.
+- `docs/backlog.md` holds possibilities not yet assumed. Neither it nor the history changes current status or repeats an item from `docs/tasks.md`.
 
 ## Sources of truth
 

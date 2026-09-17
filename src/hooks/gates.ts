@@ -3,7 +3,7 @@ import type { Preferences } from "../core/preferences.ts";
 
 // Whether the hooks should stay silent for this turn. The kill switch and a
 // pause turn every hook off; a disabled project turns them off inside that
-// working tree (plan §4.3, §4.10).
+// working tree (docs/architecture.md, "CLI and hook rules" and "Preferences").
 export function hooksDisabled(prefs: Preferences, cwd: string, now: Date = new Date()): boolean {
   if (process.env["ENGLISH_TUTOR_DISABLE"] === "1") {
     return true;

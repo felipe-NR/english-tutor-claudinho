@@ -4,6 +4,23 @@
 - Data: 2026-09-13
 - Base normativa: [Agent Plugins Specification 1.0.0](https://agent-plugins.org/specification), [Agent Skills](https://agentskills.io/specification), [Model Context Protocol](https://modelcontextprotocol.io/specification)
 
+## Separação entre histórico e documentação vigente: 2026-09-17
+
+Este arquivo é o registro histórico do plano inicial e das Fases 0 a 5 do MVP. Ele não guarda trabalho aberto e não é fonte do estado atual. As seções mantêm a numeração e o texto de quando foram escritas, para que decisões e referências antigas continuem localizáveis.
+
+O objetivo vigente, que descreve o plugin como uma capacidade acrescentada ao agente de código, está em `docs/product.md`. O restante do conteúdo vigente passou para:
+
+| Conteúdo deste plano | Documento vigente |
+|-|-|
+| Objetivo, escopo e contrato plug and play (§1) | `docs/product.md` |
+| Modos (§3.5), arquitetura (§4) e estratégia de testes (§6) | `docs/architecture.md` |
+| Riscos (§7) | `docs/risks.md` |
+| Fase 6: avaliação e medições | `docs/tasks.md` |
+| Fase 6: restante do pós-MVP | `docs/backlog.md` |
+| Estado das decisões D1 a D12 (§8) | `docs/adr/README.md` |
+
+O fechamento do MVP, com o critério de saída da Fase 4, está registrado ao final deste arquivo. A partir dele, o arquivo fica congelado.
+
 ## 0. Resumo
 
 - O tutor precisa ser acionado a cada mensagem do usuário. Na solução da Luna, quem faz isso são os hooks do Claude Code.
@@ -153,12 +170,6 @@ sequenceDiagram
 ```
 
 ## 4. Arquitetura proposta
-
-O diagrama abaixo resume o fluxo: o agente aplica o protocolo de correção e alimenta os dois caminhos de captura (o hook `stop` e o servidor MCP), que gravam cada erro em `corrections.jsonl` na pasta por usuário do sistema. Desse arquivo, a fonte da verdade, derivam `stats.json` e o relatório em Markdown; no retorno, os hooks leem o histórico para montar o briefing da sessão.
-
-![Arquitetura do english-tutor-claudinho: o agente de código alimenta hooks e servidor MCP, que gravam em corrections.jsonl na pasta por usuário do sistema, de onde stats.json e o relatório em Markdown são derivados.](diagrams/english-tutor-arquitetura.png)
-
-Fonte editável do diagrama: [`diagrams/english-tutor-arquitetura.html`](diagrams/english-tutor-arquitetura.html) (e `.svg`). As seções [4.7](#47-hooks-por-cliente), [4.8](#48-captura-das-correções) e [4.9](#49-armazenamento-e-privacidade) detalham cada parte.
 
 ### 4.1 Layout do repositório
 
@@ -574,3 +585,11 @@ Clientes:
 - Campo `instructions` do MCP: [claude-code#43749](https://github.com/anthropics/claude-code/issues/43749), [sudoall.com sobre server instructions](https://sudoall.com/mcp-server-instructions/)
 
 Evidência local em 2026-09-13: Claude Code 2.1.270, codex-cli 0.153.4 e recheck no codex-cli 0.154.0, GitHub Copilot CLI 1.0.78, agy 1.1.27, VS Code 1.137.0, Node v24.14.1, e o teste do plugin de sonda descrito na seção 3.4.
+
+## Fechamento do MVP: 2026-09-17
+
+Último registro deste plano. Com ele, o arquivo fica congelado.
+
+- Critério de saída da Fase 4: a instalação da 0.2.0 em perfil limpo do Claude Code e do Codex, seguindo apenas o README, foi feita depois da publicação da 0.2.0 em 2026-09-14. O responsável pelo repositório confirmou a execução em 2026-09-17; a saída não foi registrada.
+- Nova execução do S5 no Codex, que o S6 de `docs/compatibility.md` exige depois da correção da 0.2.0: feita no mesmo período, também sem registro do resultado. O último resultado verificado continua em `docs/compatibility.md`, e a medição da aderência do Codex faz parte do trabalho ativo em `docs/tasks.md`.
+- Com isso, as Fases 0 a 5 estão concluídas e o MVP está fechado.

@@ -4,8 +4,8 @@ import { z } from "zod";
 
 export const CONFIG_FILE = "config.json";
 
-// User preferences (plan §4.10). Defaults are applied on read, so a missing or
-// partial config still yields a complete set.
+// User preferences (docs/architecture.md, "Preferences"). Defaults are applied
+// on read, so a missing or partial config still yields a complete set.
 export const Preferences = z.object({
   strictness: z.enum(["essential", "standard", "strict"]).default("standard"),
   explanation_language: z.enum(["en", "pt-BR", "en-with-pt-notes"]).default("en-with-pt-notes"),

@@ -9,7 +9,8 @@ const REFERENCES_SUFFIX = join("skills", "english-tutor", "references");
 export interface StoreLocation {
   readonly dir: string;
   // The base whose writability decided the location: the OS home directory, the
-  // PLUGIN_DATA fallback, or an explicit override (plan §4.9, decision D4).
+  // PLUGIN_DATA fallback, or an explicit override (docs/architecture.md,
+  // "Storage and privacy"; decision D4).
   readonly origin: "home" | "plugin-data" | "override";
 }
 

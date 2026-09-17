@@ -30,7 +30,8 @@ export const SESSION_BRIEFING_UTF8_BYTE_BUDGET =
 
 // Derive the opaque per-turn occurrence id from the identifiers both the
 // UserPromptSubmit and the Stop payloads carry, so the reminder, an MCP tool
-// call and the end-of-turn capture all agree on it (plan §4.8).
+// call and the end-of-turn capture all agree on it (docs/architecture.md,
+// "Capture").
 export function occurrenceId(client: string, sessionId: string, turn: string): string {
   return createHash("sha256").update(`${client}\0${sessionId}\0${turn}`).digest("hex").slice(0, 16);
 }

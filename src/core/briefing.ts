@@ -18,7 +18,7 @@ export interface Briefing {
 
 // Build the session briefing: the main weaknesses, the 7-day trend and a
 // suggested focus, capped to `limit` patterns to stay within the token budget
-// (plan §4.11).
+// (docs/architecture.md, "Context budget").
 export function buildBriefing(records: readonly CorrectionRecord[], limit = DEFAULT_LIMIT, now?: Date): Briefing {
   const stats = computeStats(records, now);
   const topPatterns = stats.patterns.slice(0, limit);

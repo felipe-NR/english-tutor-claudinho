@@ -1,6 +1,6 @@
 # english-tutor-claudinho
 
-An [Agent Plugins 1.0.0](https://agent-plugins.org/specification) plugin that turns your coding agent into an English tutor. It corrects the English in the messages you send, records the mistakes you repeat and reviews them with you. It is tuned for Brazilian Portuguese speakers and builds on [Luna's Claude Code hooks setup](https://blog.stackademic.com/turning-my-coding-tool-into-an-english-tutor-with-claude-code-hooks-de3384f09b7f).
+An [Agent Plugins 1.0.0](https://agent-plugins.org/specification) plugin that gives your coding agent the added ability to also act as an English tutor, without removing any of its coding abilities. By analyzing the messages you write, it corrects your English, records the mistakes you repeat and reviews them with you. It is tuned for Brazilian Portuguese speakers and builds on [Luna's Claude Code hooks setup](https://blog.stackademic.com/turning-my-coding-tool-into-an-english-tutor-with-claude-code-hooks-de3384f09b7f).
 
 MVP clients: Claude Code and Codex.
 
@@ -46,7 +46,7 @@ codex plugin add english-tutor-claudinho@english-tutor-claudinho
 
 ## Status
 
-Phases 0 (foundation), 1 (client verification), 2 (portable core), 3 (trigger adapters), 4 (packaging and distribution) and 5 (hardening) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete. This is release `0.2.0`.
+Phases 0 (foundation), 1 (client verification), 2 (portable core), 3 (trigger adapters), 4 (packaging and distribution) and 5 (hardening) of the [implementation plan](docs/implementation-plan.md) (pt-BR) are complete, which closes the MVP. This is release `0.2.0`. Active work is in [docs/tasks.md](docs/tasks.md).
 
 ## Design
 
@@ -55,7 +55,7 @@ Phases 0 (foundation), 1 (client verification), 2 (portable core), 3 (trigger ad
 
 ![Architecture of english-tutor-claudinho: the coding agent feeds hooks and the MCP server, which write each mistake to corrections.jsonl in the per-OS-user store, from which stats.json and the Markdown report are derived and the session briefing returns to the agent.](docs/diagrams/english-tutor-architecture-en.png)
 
-[ADR-0001](docs/adr/0001-tutor-layers.md) explains the split. The diagram source is [`docs/diagrams/english-tutor-architecture-en.html`](docs/diagrams/english-tutor-architecture-en.html) (and `.svg`); a pt-BR version lives in the [implementation plan](docs/implementation-plan.md#4-arquitetura-proposta).
+[ADR-0001](docs/adr/0001-tutor-layers.md) explains the split, and [docs/architecture.md](docs/architecture.md) describes the current architecture. The diagram source is [`docs/diagrams/english-tutor-architecture-en.html`](docs/diagrams/english-tutor-architecture-en.html) (and `.svg`).
 
 ## Development
 
@@ -69,9 +69,22 @@ npm run build   # rebuild plugin/dist/tutor.mjs and adapters/codex/ after changi
 
 `plugin/dist/tutor.mjs` and the generated `adapters/codex/` are committed because installs from git run no build step, and CI checks both stay in sync with the sources. Rules for contributors and coding agents live in [AGENTS.md](AGENTS.md).
 
+## Documentation
+
+[AGENTS.md](AGENTS.md) routes reading: which document is the source of truth for each subject, and which one to read for a task.
+
+- [docs/product.md](docs/product.md): what the plugin adds to a coding agent, for whom, and its scope
+- [docs/architecture.md](docs/architecture.md): current architecture
+- [docs/adr/](docs/adr/README.md): decisions and their status
+- [docs/compatibility.md](docs/compatibility.md): verified client behavior
+- [docs/risks.md](docs/risks.md): risks and mitigations
+- [docs/tasks.md](docs/tasks.md): active work
+- [docs/backlog.md](docs/backlog.md): possibilities after the MVP
+- [docs/implementation-plan.md](docs/implementation-plan.md): history of the initial plan and of Phases 0 to 5 (pt-BR)
+
 ## Em português
 
-O english-tutor-claudinho é um plugin que transforma o agente de código num tutor de inglês para brasileiros. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. Instale com dois comandos por cliente (veja **Install** acima): no Claude Code, `claude plugin marketplace add felipe-NR/english-tutor-claudinho` e depois `claude plugin install english-tutor-claudinho@english-tutor-claudinho`; no Codex, os mesmos passos com `codex`. Esta é a versão `0.2.0`. O [plano de implementação](docs/implementation-plan.md) está em português.
+O english-tutor-claudinho é um plugin que acrescenta ao agente de código a capacidade de também atuar como professor/tutor de inglês para brasileiros, através da análise dos inputs do usuário, sem remover nenhuma das capacidades que o agente já tem. Ele corrige o inglês das mensagens enviadas ao agente e acompanha os erros que se repetem. Instale com dois comandos por cliente (veja **Install** acima): no Claude Code, `claude plugin marketplace add felipe-NR/english-tutor-claudinho` e depois `claude plugin install english-tutor-claudinho@english-tutor-claudinho`; no Codex, os mesmos passos com `codex`. Esta é a versão `0.2.0`. O [plano de implementação](docs/implementation-plan.md), registro histórico do MVP, está em português, e o [diagrama de arquitetura](docs/diagrams/english-tutor-arquitetura.png) também tem versão em português.
 
 ## License
 

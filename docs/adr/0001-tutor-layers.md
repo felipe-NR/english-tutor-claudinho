@@ -4,7 +4,7 @@
 - Date: 2026-09-13
 - Decider: Felipe Neves Ricardo
 - Full analysis: [implementation plan, section 3](../implementation-plan.md) (pt-BR)
-- Diagram: [architecture and data flow](../implementation-plan.md#4-arquitetura-proposta) (pt-BR) shows this two-layer split, the capture paths and where corrections are stored.
+- Diagram: [architecture and data flow](../architecture.md) shows this two-layer split, the capture paths and where corrections are stored.
 
 ## Context
 

@@ -3,7 +3,7 @@ import { isSafeStoredIdentifier, isSafeStoredText } from "./privacy.ts";
 
 // The maximum length of a stored fragment. Anything longer is a paste, a code
 // block or a log line, not a short piece of prose to correct, so the store
-// refuses it (plan §4.9).
+// refuses it (docs/architecture.md, "Storage and privacy").
 export const MAX_FRAGMENT_LENGTH = 160;
 
 // Stable category IDs from the pt-BR profile
@@ -48,7 +48,7 @@ const occurrenceId = z
 
 // The input a caller supplies for one correction. `occurrence_id` is present
 // only when a hook reminder provided it; without it every call is a new
-// occurrence (plan §4.8).
+// occurrence (docs/architecture.md, "Capture").
 export const CorrectionInput = z.object({
   original: fragment,
   correction: fragment,
@@ -59,7 +59,8 @@ export const CorrectionInput = z.object({
 export type CorrectionInput = z.infer<typeof CorrectionInput>;
 
 // One event in the append-only record. `mistake_key` groups statistics;
-// `occurrence_id` preserves each legitimate repetition (plan §4.9).
+// `occurrence_id` preserves each legitimate repetition (docs/architecture.md,
+// "Storage and privacy").
 export const CorrectionRecord = z.object({
   id: z.uuid(),
   occurrence_id: occurrenceId.optional(),
